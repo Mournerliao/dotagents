@@ -12,6 +12,16 @@ const scopeFlag = args.indexOf("--scope");
 const scope = scopeFlag === -1 ? "project" : args[scopeFlag + 1];
 
 try {
+  const allowedOptions =
+    command === "add" ? new Set(["--agent", "--scope"]) : new Set<string>();
+  const unknownOption = args
+    .slice(2)
+    .find((argument) => argument.startsWith("--") && !allowedOptions.has(argument));
+
+  if (unknownOption !== undefined) {
+    throw new Error(`Unknown option "${unknownOption}".`);
+  }
+
   if (command === "validate") {
     if (source === undefined) {
       throw new Error("Usage: agent-skills validate <local-source>");

@@ -83,6 +83,19 @@ test("rejects a non-project scope in the first installation slice", async () => 
   );
 });
 
+test("rejects an unknown option instead of silently ignoring it", async () => {
+  const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "add", fixturePath, "--agent", "codex", "--bogus"],
+    { cwd: project, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Unknown option "--bogus"\./);
+});
+
 test("rejects canonical metadata that omits a required field", async () => {
   const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
   const source = join(project, "invalid-skill");
