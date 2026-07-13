@@ -1,0 +1,8 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "A minimal canonical skill fixture.",
+  "license": "MIT",
+  "compatibility": ["codex"],
+  "files": ["SKILL.md"]
+}
