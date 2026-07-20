@@ -5,7 +5,13 @@ import { fileURLToPath } from "node:url";
 
 import { formatCatalogListing, readCatalog } from "./catalog.js";
 import { runInteractiveAdd } from "./interactive-add.js";
-import { installLocalSkill } from "./installer.js";
+import {
+  formatInstalledListing,
+  installLocalSkill,
+  listInstalledSkills,
+  removeLocalSkill,
+  updateLocalSkill,
+} from "./installer.js";
 import { readCanonicalSkill } from "./canonical-skill.js";
 import {
   parseSupportedAgent,
@@ -22,9 +28,13 @@ try {
     await runList(args.slice(1));
   } else if (command === "add") {
     await runAdd(args.slice(1));
+  } else if (command === "update") {
+    await runUpdate(args.slice(1));
+  } else if (command === "remove") {
+    await runRemove(args.slice(1));
   } else {
     throw new Error(
-      "Usage: agent-skills <add|list|validate> [options]",
+      "Usage: agent-skills <add|list|update|remove|validate> [options]",
     );
   }
 } catch (error) {
@@ -46,9 +56,15 @@ async function runValidate(args: string[]): Promise<void> {
 
 async function runList(args: string[]): Promise<void> {
   rejectUnknownOptions(args, new Set(["--catalog"]));
-  const catalogPath = readOption(args, "--catalog") ?? defaultCatalogPath();
-  const catalog = await readCatalog(catalogPath);
-  process.stdout.write(formatCatalogListing(catalog));
+  if (args.includes("--catalog")) {
+    const catalogPath = readOption(args, "--catalog") ?? defaultCatalogPath();
+    const catalog = await readCatalog(catalogPath);
+    process.stdout.write(formatCatalogListing(catalog));
+    return;
+  }
+
+  const listings = await listInstalledSkills(process.cwd());
+  process.stdout.write(formatInstalledListing(listings));
 }
 
 async function runAdd(args: string[]): Promise<void> {
@@ -90,6 +106,60 @@ async function runAdd(args: string[]): Promise<void> {
   );
 }
 
+async function runUpdate(args: string[]): Promise<void> {
+  rejectUnknownOptions(
+    args,
+    new Set(["--source", "--agent", "--scope", "--dry-run", "--force"]),
+  );
+
+  const name = firstPositional(args);
+  if (name === undefined) {
+    throw new Error(
+      "Usage: agent-skills update <name> [--source <local-source>] [--agent <claude-code|codex>] [--scope <global|project>] [--dry-run] [--force]",
+    );
+  }
+
+  const source = readOption(args, "--source");
+  const agent = readOption(args, "--agent");
+  const scope = readOption(args, "--scope");
+  const message = await updateLocalSkill({
+    name,
+    projectDirectory: process.cwd(),
+    ...(source === undefined ? {} : { source }),
+    ...(agent === undefined ? {} : { agent: parseSupportedAgent(agent) }),
+    ...(scope === undefined ? {} : { scope: parseSupportedScope(scope) }),
+    dryRun: args.includes("--dry-run"),
+    force: args.includes("--force"),
+  });
+  process.stdout.write(`${message}\n`);
+}
+
+async function runRemove(args: string[]): Promise<void> {
+  rejectUnknownOptions(
+    args,
+    new Set(["--agent", "--scope", "--dry-run", "--force"]),
+  );
+
+  const name = firstPositional(args);
+  if (name === undefined) {
+    throw new Error(
+      "Usage: agent-skills remove <name> [--agent <claude-code|codex>] [--scope <global|project>] [--dry-run] [--force]",
+    );
+  }
+
+  const agent = readOption(args, "--agent");
+  const scope = readOption(args, "--scope");
+  const message = await removeLocalSkill({
+    name,
+    projectDirectory: process.cwd(),
+    ...(agent === undefined ? {} : { agent: parseSupportedAgent(agent) }),
+    ...(scope === undefined ? {} : { scope: parseSupportedScope(scope) }),
+    dryRun: args.includes("--dry-run"),
+    force: args.includes("--force"),
+  });
+  process.stdout.write(`${message}\n`);
+}
+
 function rejectUnknownOptions(args: string[], allowed: Set<string>): void {
   const unknownOption = args.find(
     (argument) => argument.startsWith("--") && !allowed.has(argument),
@@ -110,6 +180,13 @@ function readOption(args: string[], flag: string): string | undefined {
 }
 
 function firstPositional(args: string[]): string | undefined {
+  const flagsWithValues = new Set([
+    "--agent",
+    "--scope",
+    "--catalog",
+    "--source",
+  ]);
+
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === undefined) {
@@ -117,7 +194,9 @@ function firstPositional(args: string[]): string | undefined {
     }
 
     if (argument.startsWith("--")) {
-      index += 1;
+      if (flagsWithValues.has(argument)) {
+        index += 1;
+      }
       continue;
     }
 

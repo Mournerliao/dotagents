@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -81,6 +82,10 @@ for (const installationCase of sharedInstallationCases) {
           agent: installationCase.agent,
           scope: installationCase.scope,
           files: [installationCase.ownedFile],
+          digests: {
+            [installationCase.ownedFile]:
+              "b3ca0ae57773263a59ff08cd69f777ba0ecd3c6355e9b91e57473acc99c45538",
+          },
         },
       ],
     });
@@ -140,6 +145,10 @@ test("preserves existing lock installations when adding another skill", async ()
     agent: "codex",
     scope: "project",
     files: [".agents/skills/example/SKILL.md"],
+    digests: {
+      ".agents/skills/example/SKILL.md":
+        "b3ca0ae57773263a59ff08cd69f777ba0ecd3c6355e9b91e57473acc99c45538",
+    },
   });
   assert.deepEqual(
     lock.installations.find((item) => item.name === "second-skill"),
@@ -150,6 +159,10 @@ test("preserves existing lock installations when adding another skill", async ()
       agent: "codex",
       scope: "project",
       files: [".agents/skills/second-skill/SKILL.md"],
+      digests: {
+        ".agents/skills/second-skill/SKILL.md":
+          createHash("sha256").update("# Second skill\n").digest("hex"),
+      },
     },
   );
 });

@@ -77,6 +77,10 @@ test("installs a second maintained skill through the interactive add flow", asyn
       agent: "codex",
       scope: "project",
       files: [".agents/skills/summarize/SKILL.md"],
+      digests: {
+        ".agents/skills/summarize/SKILL.md":
+          "25946038b57081cf031a7af56905d05e2bf6958fe67d5217a603090ca7cf5d05",
+      },
     },
   ]);
 });

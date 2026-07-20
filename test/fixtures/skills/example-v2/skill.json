@@ -1,0 +1,8 @@
+{
+  "name": "example",
+  "version": "2.0.0",
+  "description": "A newer canonical skill fixture used for update tests.",
+  "license": "MIT",
+  "compatibility": ["codex", "claude-code"],
+  "files": ["SKILL.md", "EXTRA.md"]
+}
