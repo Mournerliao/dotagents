@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { access, readFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 
 export interface MaintainedCatalogEntry {
   kind: "maintained";
@@ -14,7 +14,11 @@ export interface CatalogOnlyEntry {
   kind: "catalog-only";
   name: string;
   upstream: string;
+  author: string;
+  license: string;
   compatibility: string[];
+  compatibilityNotes?: string;
+  recommendation: string;
   description: string;
 }
 
@@ -44,7 +48,7 @@ export async function readCatalog(catalogPath: string): Promise<Catalog> {
   const entries: CatalogEntry[] = [];
 
   for (const entry of parsed.entries) {
-    entries.push(parseCatalogEntry(entry, rootDirectory));
+    entries.push(await parseCatalogEntry(entry, rootDirectory));
   }
 
   return { rootDirectory, entries };
@@ -89,10 +93,10 @@ export function catalogOnlyEntries(catalog: Catalog): CatalogOnlyEntry[] {
   );
 }
 
-function parseCatalogEntry(
+async function parseCatalogEntry(
   entry: unknown,
   rootDirectory: string,
-): CatalogEntry {
+): Promise<CatalogEntry> {
   if (!isRecord(entry) || typeof entry.kind !== "string") {
     throw new Error('Invalid catalog entry: "kind" is required.');
   }
@@ -125,13 +129,23 @@ function parseCatalogEntry(
       );
     }
 
+    const relativePath = entry.path;
+    const absolutePath = resolve(rootDirectory, relativePath);
+    try {
+      await access(join(absolutePath, "skill.json"));
+    } catch {
+      throw new Error(
+        `Invalid maintained catalog entry: path "${relativePath}" does not resolve to a skill directory.`,
+      );
+    }
+
     return {
       kind: "maintained",
       name: entry.name,
       version: entry.version,
       compatibility: [...entry.compatibility] as string[],
       description: entry.description,
-      path: resolve(rootDirectory, entry.path),
+      path: absolutePath,
     };
   }
 
@@ -142,18 +156,66 @@ function parseCatalogEntry(
       );
     }
 
-    return {
+    if (!isHttpsUrl(entry.upstream)) {
+      throw new Error(
+        'Invalid catalog-only entry: "upstream" must be an https URL.',
+      );
+    }
+
+    if (
+      typeof entry.author !== "string" ||
+      entry.author.trim() === "" ||
+      typeof entry.license !== "string" ||
+      entry.license.trim() === "" ||
+      typeof entry.recommendation !== "string" ||
+      entry.recommendation.trim() === ""
+    ) {
+      throw new Error(
+        'Invalid catalog-only entry: "author", "license", and "recommendation" are required.',
+      );
+    }
+
+    const catalogOnly: CatalogOnlyEntry = {
       kind: "catalog-only",
       name: entry.name,
       upstream: entry.upstream,
+      author: entry.author,
+      license: entry.license,
       compatibility: [...entry.compatibility] as string[],
+      recommendation: entry.recommendation,
       description: entry.description,
     };
+
+    if (
+      "compatibilityNotes" in entry &&
+      entry.compatibilityNotes !== undefined
+    ) {
+      if (
+        typeof entry.compatibilityNotes !== "string" ||
+        entry.compatibilityNotes.trim() === ""
+      ) {
+        throw new Error(
+          'Invalid catalog-only entry: "compatibilityNotes" must be a non-empty string when present.',
+        );
+      }
+      catalogOnly.compatibilityNotes = entry.compatibilityNotes;
+    }
+
+    return catalogOnly;
   }
 
   throw new Error(
     `Invalid catalog entry kind "${entry.kind}". Expected "maintained" or "catalog-only".`,
   );
+}
+
+function isHttpsUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

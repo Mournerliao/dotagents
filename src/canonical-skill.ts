@@ -8,6 +8,21 @@ export interface SkillResources {
   assets: string[];
 }
 
+export interface OriginalProvenance {
+  kind: "original";
+}
+
+export interface MaintainedForkProvenance {
+  kind: "maintained-fork";
+  upstream: string;
+  baseline: string;
+  reason: string;
+  changes: string[];
+  attribution: string;
+}
+
+export type SkillProvenance = OriginalProvenance | MaintainedForkProvenance;
+
 export interface CanonicalSkill {
   name: string;
   version: string;
@@ -16,6 +31,7 @@ export interface CanonicalSkill {
   compatibility: string[];
   files: string[];
   resources: SkillResources;
+  provenance: SkillProvenance;
   runtime: string[];
   commands: string[];
   dependencies: string[];
@@ -126,6 +142,7 @@ export async function readCanonicalSkill(
     );
   }
 
+  const provenance = parseProvenance(metadata.provenance);
   const resources = parseResources(metadata.resources, files);
   const runtime = parseOptionalStringList(metadata, "runtime", {
     allowScalar: true,
@@ -170,6 +187,7 @@ export async function readCanonicalSkill(
     compatibility: [...metadata.compatibility] as string[],
     files,
     resources,
+    provenance,
     runtime,
     commands,
     dependencies,
@@ -178,6 +196,90 @@ export async function readCanonicalSkill(
     permissions,
     writeLocations,
   };
+}
+
+function parseProvenance(value: unknown): SkillProvenance {
+  if (value === undefined) {
+    throw new Error('Invalid canonical metadata: "provenance" is required.');
+  }
+
+  if (!isRecord(value) || typeof value.kind !== "string") {
+    throw new Error(
+      'Invalid canonical metadata: "provenance.kind" must be "original" or "maintained-fork".',
+    );
+  }
+
+  if (value.kind === "original") {
+    if (
+      "upstream" in value ||
+      "baseline" in value ||
+      "reason" in value ||
+      "changes" in value ||
+      "attribution" in value
+    ) {
+      throw new Error(
+        "Invalid canonical metadata: original provenance must not declare upstream fields.",
+      );
+    }
+
+    return { kind: "original" };
+  }
+
+  if (value.kind === "maintained-fork") {
+    const upstream = value.upstream;
+    const baseline = value.baseline;
+    const reason = value.reason;
+    const changes = value.changes;
+    const attribution = value.attribution;
+
+    if (
+      typeof upstream !== "string" ||
+      upstream.trim() === "" ||
+      typeof baseline !== "string" ||
+      baseline.trim() === "" ||
+      typeof reason !== "string" ||
+      reason.trim() === "" ||
+      typeof attribution !== "string" ||
+      attribution.trim() === "" ||
+      !Array.isArray(changes) ||
+      changes.length === 0 ||
+      changes.some(
+        (entry) => typeof entry !== "string" || entry.trim() === "",
+      )
+    ) {
+      throw new Error(
+        'Invalid canonical metadata: maintained-fork provenance requires "upstream", "baseline", "reason", "changes", and "attribution".',
+      );
+    }
+
+    if (!isHttpsUrl(upstream)) {
+      throw new Error(
+        'Invalid canonical metadata: "provenance.upstream" must be an https URL.',
+      );
+    }
+
+    return {
+      kind: "maintained-fork",
+      upstream,
+      baseline,
+      reason,
+      changes: [...(changes as string[])],
+      attribution,
+    };
+  }
+
+  throw new Error(
+    'Invalid canonical metadata: "provenance.kind" must be "original" or "maintained-fork".',
+  );
+}
+
+function isHttpsUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export function hasSensitiveCapabilities(skill: CanonicalSkill): boolean {

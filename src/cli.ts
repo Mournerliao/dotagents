@@ -3,7 +3,10 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { formatCatalogListing, readCatalog } from "./catalog.js";
+import {
+  formatCatalogListing,
+  readCatalog,
+} from "./catalog.js";
 import { runInteractiveAdd } from "./interactive-add.js";
 import {
   formatInstalledListing,
@@ -49,10 +52,27 @@ try {
 }
 
 async function runValidate(args: string[]): Promise<void> {
-  rejectUnknownOptions(args, new Set());
-  const source = args[0];
+  rejectUnknownOptions(args, new Set(["--catalog"]));
+
+  if (args.includes("--catalog")) {
+    const catalogPath = readOption(args, "--catalog") ?? defaultCatalogPath();
+    const catalog = await readCatalog(catalogPath);
+    for (const entry of catalog.entries) {
+      if (entry.kind === "maintained") {
+        await readCanonicalSkill(entry.path);
+      }
+    }
+    process.stdout.write(
+      `Valid catalog: ${catalog.entries.length} entries\n`,
+    );
+    return;
+  }
+
+  const source = firstPositional(args);
   if (source === undefined) {
-    throw new Error("Usage: agent-skills validate <local-source>");
+    throw new Error(
+      "Usage: agent-skills validate <local-source> | validate --catalog [path]",
+    );
   }
 
   const skill = await readCanonicalSkill(source);

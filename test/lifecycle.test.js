@@ -64,6 +64,7 @@ test("reports update-available when the recorded source has a newer version", as
     license: "MIT",
     compatibility: ["codex"],
     files: ["SKILL.md"],
+    provenance: { kind: "original" },
     contents: {
       "SKILL.md": "# Example 1.0.0\n",
     },
@@ -79,6 +80,7 @@ test("reports update-available when the recorded source has a newer version", as
     license: "MIT",
     compatibility: ["codex"],
     files: ["SKILL.md"],
+    provenance: { kind: "original" },
     contents: {
       "SKILL.md": "# Example 2.0.0\n",
     },
@@ -348,6 +350,7 @@ test("partial update failure rolls back installed files and lock state", async (
     license: "MIT",
     compatibility: ["codex"],
     files: ["SKILL.md", "A.md", "B.md"],
+    provenance: { kind: "original" },
     contents: {
       "SKILL.md": "# Example rollback\n",
       "A.md": "first new file\n",

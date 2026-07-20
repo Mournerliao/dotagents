@@ -17,10 +17,22 @@
       "path": "../skills/summarize"
     },
     {
+      "kind": "maintained",
+      "name": "find-skills-lite",
+      "version": "1.0.0",
+      "compatibility": ["codex", "claude-code"],
+      "description": "Discover skills through this repository's catalog without invoking third-party install CLIs.",
+      "path": "../skills/find-skills-lite"
+    },
+    {
       "kind": "catalog-only",
       "name": "find-skills",
       "upstream": "https://github.com/vercel-labs/skills/tree/main/skills/find-skills",
+      "author": "Vercel Labs",
+      "license": "unknown",
       "compatibility": ["codex", "claude-code"],
+      "compatibilityNotes": "Upstream targets the open skills ecosystem; this repository does not guarantee adapter coverage.",
+      "recommendation": "Recommend the upstream find-skills workflow when users want the public skills marketplace CLI; prefer find-skills-lite when staying inside this repository's trust boundary.",
       "description": "Discover and install agent skills from public registries."
     }
   ]

@@ -4,5 +4,8 @@
   "description": "Summarize the current conversation or selection concisely.",
   "license": "MIT",
   "compatibility": ["codex"],
-  "files": ["SKILL.md"]
+  "files": ["SKILL.md"],
+  "provenance": {
+    "kind": "original"
+  }
 }

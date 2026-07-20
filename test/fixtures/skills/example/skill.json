@@ -4,5 +4,8 @@
   "description": "A minimal canonical skill fixture.",
   "license": "MIT",
   "compatibility": ["codex", "claude-code"],
-  "files": ["SKILL.md"]
+  "files": ["SKILL.md"],
+  "provenance": {
+    "kind": "original"
+  }
 }

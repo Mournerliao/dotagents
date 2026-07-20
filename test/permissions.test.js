@@ -53,6 +53,7 @@ test("rejects a resource path that is missing from the skill package", async () 
       secrets: [],
       permissions: ["execute"],
       writeLocations: [],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(join(source, "SKILL.md"), "# Missing resource\n");
@@ -90,6 +91,7 @@ test("rejects a resource that is not listed in files", async () => {
       secrets: [],
       permissions: ["execute"],
       writeLocations: [],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(join(source, "SKILL.md"), "# Undeclared file\n");
@@ -120,6 +122,7 @@ test("rejects a broken local reference in SKILL.md", async () => {
       license: "MIT",
       compatibility: ["codex"],
       files: ["SKILL.md"],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(
@@ -160,6 +163,7 @@ test("rejects scripts that omit required execute permission", async () => {
       secrets: [],
       permissions: [],
       writeLocations: [],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(join(source, "SKILL.md"), "# Undeclared capability\n");
@@ -410,6 +414,7 @@ test("install rejects a skill whose declared dependency is missing", async () =>
       secrets: [],
       permissions: ["execute"],
       writeLocations: [],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(join(source, "SKILL.md"), "# Missing dependency\n");

@@ -20,7 +20,11 @@
       "kind": "catalog-only",
       "name": "find-skills",
       "upstream": "https://github.com/vercel-labs/skills/tree/main/skills/find-skills",
+      "author": "Vercel Labs",
+      "license": "unknown",
       "compatibility": ["codex", "claude-code"],
+      "compatibilityNotes": "Upstream targets the open skills ecosystem; fixtures do not install it.",
+      "recommendation": "Keep as a catalog-only recommendation for upstream discovery.",
       "description": "Discover and install agent skills from public registries."
     }
   ]

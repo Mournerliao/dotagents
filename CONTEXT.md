@@ -5,6 +5,10 @@
 | Term | Meaning |
 |------|---------|
 | Maintained skill | An original or intentionally maintained skill hosted in this repository as installable canonical source. |
+| Original skill | A maintained skill authored in this repository (`provenance.kind: "original"`), with no upstream fork fields. |
+| Maintained fork | A maintained skill adapted from an upstream source, with declared baseline, reason, local change history, and attribution. |
+| Provenance | Metadata that distinguishes original, maintained-fork, and catalog-only records and records ownership lineage. |
+| Attribution | Credit and license notice preserved for upstream authors when cataloging or forking third-party work. |
 | Catalog-only entry | An external recommendation recorded as a link to its upstream source; not copied or installed by this repository. |
 | Catalog | The curated list that mixes maintained skills and catalog-only recommendations with an explicit support status for each entry. |
 | Support status | Either `maintained` (installable from this repository) or `catalog-only` (upstream link only). |

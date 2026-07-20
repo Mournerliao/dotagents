@@ -23,5 +23,8 @@
   "network": ["https://example.com"],
   "secrets": ["SCRIPTED_EXAMPLE_TOKEN"],
   "permissions": ["execute", "network", "secrets", "filesystem-write"],
-  "writeLocations": [".scratch/scripted-example/"]
+  "writeLocations": [".scratch/scripted-example/"],
+  "provenance": {
+    "kind": "original"
+  }
 }

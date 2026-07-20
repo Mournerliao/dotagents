@@ -1,0 +1,20 @@
+{
+  "name": "find-skills-lite",
+  "version": "1.0.0",
+  "description": "Discover skills through this repository's catalog without invoking third-party install CLIs.",
+  "license": "MIT",
+  "compatibility": ["codex", "claude-code"],
+  "files": ["SKILL.md"],
+  "provenance": {
+    "kind": "maintained-fork",
+    "upstream": "https://github.com/vercel-labs/skills/tree/main/skills/find-skills",
+    "baseline": "773fb2c7bbf16781670a3520affc4abd0c6151ae",
+    "reason": "Keep a reviewed installable discovery skill that points at this repository's catalog instead of an external skills marketplace CLI.",
+    "changes": [
+      "Removed npx skills find/add/update workflow instructions.",
+      "Removed skills.sh leaderboard and install-count guidance.",
+      "Redirected discovery to agent-skills list --catalog and catalog-only upstream links."
+    ],
+    "attribution": "Based on find-skills from vercel-labs/skills by Vercel Labs."
+  }
+}

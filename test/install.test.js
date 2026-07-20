@@ -105,6 +105,7 @@ test("preserves existing lock installations when adding another skill", async ()
       license: "MIT",
       compatibility: ["codex"],
       files: ["SKILL.md"],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(join(secondSource, "SKILL.md"), "# Second skill\n");
@@ -329,6 +330,7 @@ test("rejects canonical metadata that omits a required field", async () => {
       description: "Missing its license.",
       compatibility: ["codex"],
       files: ["SKILL.md"],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(join(source, "SKILL.md"), "# Invalid\n");
@@ -359,6 +361,7 @@ test("rejects a canonical skill that is incompatible with Codex", async () => {
       license: "MIT",
       compatibility: ["claude-code"],
       files: ["SKILL.md"],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(join(source, "SKILL.md"), "# Claude only\n");
@@ -403,6 +406,7 @@ test("rejects an unsafe canonical skill identity", async () => {
       license: "MIT",
       compatibility: ["codex"],
       files: ["SKILL.md"],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(join(source, "SKILL.md"), "# Unsafe\n");
@@ -432,6 +436,7 @@ test("rejects a canonical skill without a semantic version", async () => {
       license: "MIT",
       compatibility: ["codex"],
       files: ["SKILL.md"],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(join(source, "SKILL.md"), "# Invalid version\n");
@@ -461,6 +466,7 @@ test("rejects canonical metadata whose required content is missing", async () =>
       license: "MIT",
       compatibility: ["codex"],
       files: ["SKILL.md"],
+      provenance: { kind: "original" }
     }),
   );
 
@@ -485,6 +491,7 @@ test("rejects canonical metadata without declared compatibility", async () => {
       description: "Missing compatibility.",
       license: "MIT",
       files: ["SKILL.md"],
+      provenance: { kind: "original" }
     }),
   );
   await writeFile(join(source, "SKILL.md"), "# Missing compatibility\n");

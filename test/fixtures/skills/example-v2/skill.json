@@ -4,5 +4,8 @@
   "description": "A newer canonical skill fixture used for update tests.",
   "license": "MIT",
   "compatibility": ["codex", "claude-code"],
-  "files": ["SKILL.md", "EXTRA.md"]
+  "files": ["SKILL.md", "EXTRA.md"],
+  "provenance": {
+    "kind": "original"
+  }
 }
