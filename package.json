@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test test/**/*.test.js",
-    "validate:canonical": "npm run build && node dist/cli.js validate test/fixtures/skills/example",
+    "validate:canonical": "npm run build && node dist/cli.js validate skills/example && node dist/cli.js validate skills/summarize",
     "ci": "npm run typecheck && npm test && npm run validate:canonical"
   },
   "devDependencies": {

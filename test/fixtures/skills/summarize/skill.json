@@ -1,0 +1,8 @@
+{
+  "name": "summarize",
+  "version": "1.0.0",
+  "description": "Summarize the current conversation or selection concisely.",
+  "license": "MIT",
+  "compatibility": ["codex"],
+  "files": ["SKILL.md"]
+}

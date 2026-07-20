@@ -1,0 +1,27 @@
+{
+  "entries": [
+    {
+      "kind": "maintained",
+      "name": "example",
+      "version": "1.0.0",
+      "compatibility": ["codex"],
+      "description": "A minimal canonical skill fixture.",
+      "path": "skills/example"
+    },
+    {
+      "kind": "maintained",
+      "name": "summarize",
+      "version": "1.0.0",
+      "compatibility": ["codex"],
+      "description": "Summarize the current conversation or selection concisely.",
+      "path": "skills/summarize"
+    },
+    {
+      "kind": "catalog-only",
+      "name": "find-skills",
+      "upstream": "https://github.com/vercel-labs/skills/tree/main/skills/find-skills",
+      "compatibility": ["codex", "claude-code"],
+      "description": "Discover and install agent skills from public registries."
+    }
+  ]
+}
