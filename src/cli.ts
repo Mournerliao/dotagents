@@ -7,6 +7,7 @@ import { formatCatalogListing, readCatalog } from "./catalog.js";
 import { runInteractiveAdd } from "./interactive-add.js";
 import {
   formatInstalledListing,
+  getPermissionReview,
   installLocalSkill,
   listInstalledSkills,
   removeLocalSkill,
@@ -38,6 +39,10 @@ try {
     );
   }
 } catch (error) {
+  const permissionReview = getPermissionReview(error);
+  if (permissionReview !== undefined) {
+    process.stdout.write(permissionReview);
+  }
   const message = error instanceof Error ? error.message : String(error);
   process.stderr.write(`Error: ${message}\n`);
   process.exitCode = 1;
@@ -68,12 +73,23 @@ async function runList(args: string[]): Promise<void> {
 }
 
 async function runAdd(args: string[]): Promise<void> {
-  rejectUnknownOptions(args, new Set(["--agent", "--scope", "--catalog"]));
+  rejectUnknownOptions(
+    args,
+    new Set([
+      "--agent",
+      "--scope",
+      "--catalog",
+      "--dry-run",
+      "--accept-permissions",
+    ]),
+  );
 
   const source = firstPositional(args);
   const agent = readOption(args, "--agent");
   const scope = readOption(args, "--scope") ?? "project";
   const catalogPath = readOption(args, "--catalog") ?? defaultCatalogPath();
+  const dryRun = args.includes("--dry-run");
+  const acceptPermissions = args.includes("--accept-permissions");
 
   if (source === undefined) {
     const catalog = await readCatalog(catalogPath);
@@ -87,19 +103,35 @@ async function runAdd(args: string[]): Promise<void> {
 
   if (agent === undefined) {
     throw new Error(
-      "Usage: agent-skills add <local-source> --agent <claude-code|codex> [--scope <global|project>]",
+      "Usage: agent-skills add <local-source> --agent <claude-code|codex> [--scope <global|project>] [--dry-run] [--accept-permissions]",
     );
   }
 
   const supportedAgent = parseSupportedAgent(agent);
   const supportedScope = parseSupportedScope(scope);
 
-  const installed = await installLocalSkill({
+  const result = await installLocalSkill({
     source,
     projectDirectory: process.cwd(),
     agent: supportedAgent,
     scope: supportedScope,
+    dryRun,
+    acceptPermissions,
   });
+
+  if (result.permissionReview !== undefined) {
+    process.stdout.write(result.permissionReview);
+  }
+
+  if (result.preview !== undefined) {
+    process.stdout.write(result.preview);
+    return;
+  }
+
+  const installed = result.installation;
+  if (installed === undefined) {
+    throw new Error("Installation did not produce a lock record.");
+  }
 
   process.stdout.write(
     `Installed ${installed.name}@${installed.version} for ${installed.agent} (${installed.scope})\n`,

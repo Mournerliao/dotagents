@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   access,
@@ -11,7 +12,12 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 import type { AgentAdapter, PlannedFile } from "./adapter.js";
-import { readCanonicalSkill } from "./canonical-skill.js";
+import {
+  formatPermissionReview,
+  hasSensitiveCapabilities,
+  readCanonicalSkill,
+  type CanonicalSkill,
+} from "./canonical-skill.js";
 import { claudeCodeAdapter } from "./claude-code-adapter.js";
 import { codexAdapter } from "./codex-adapter.js";
 import type { SupportedAgent, SupportedScope } from "./supported-options.js";
@@ -21,6 +27,15 @@ interface InstallOptions {
   projectDirectory: string;
   agent: SupportedAgent;
   scope: SupportedScope;
+  dryRun?: boolean;
+  acceptPermissions?: boolean;
+}
+
+export interface InstallResult {
+  skill: CanonicalSkill;
+  permissionReview?: string;
+  installation?: LockInstallation;
+  preview?: string;
 }
 
 interface UpdateOptions {
@@ -83,15 +98,20 @@ const adapters: Record<SupportedAgent, AgentAdapter> = {
 
 export async function installLocalSkill(
   options: InstallOptions,
-): Promise<LockInstallation> {
+): Promise<InstallResult> {
   const sourceDirectory = resolve(options.source);
   const skill = await readCanonicalSkill(sourceDirectory);
+  const permissionReview = hasSensitiveCapabilities(skill)
+    ? formatPermissionReview(skill)
+    : undefined;
 
   if (!skill.compatibility.includes(options.agent)) {
     throw new Error(
       `Skill "${skill.name}" does not support agent "${options.agent}".`,
     );
   }
+
+  assertDependenciesAvailable(skill.dependencies);
 
   const adapter = adapters[options.agent];
   const installRoot = resolveInstallRoot(options);
@@ -102,6 +122,22 @@ export async function installLocalSkill(
 
   for (const destination of destinations) {
     await assertDestinationAvailable(destination);
+  }
+
+  if (options.dryRun === true) {
+    return {
+      skill,
+      ...(permissionReview === undefined ? {} : { permissionReview }),
+      preview: formatDryRunInstall(skill, plannedFiles),
+    };
+  }
+
+  if (hasSensitiveCapabilities(skill) && options.acceptPermissions !== true) {
+    const error = new Error(
+      "Sensitive capabilities require --accept-permissions.",
+    );
+    Object.assign(error, { permissionReview });
+    throw error;
   }
 
   for (const [index, file] of plannedFiles.entries()) {
@@ -134,7 +170,11 @@ export async function installLocalSkill(
 
   await writeFile(lockPath, `${JSON.stringify(lock, null, 2)}\n`);
 
-  return installation;
+  return {
+    skill,
+    installation,
+    ...(permissionReview === undefined ? {} : { permissionReview }),
+  };
 }
 
 export async function listInstalledSkills(
@@ -339,6 +379,45 @@ function formatDryRunRemove(plan: MutationPlan): string {
     "lock: remove installation",
   ];
   return lines.join("\n");
+}
+
+function formatDryRunInstall(
+  skill: CanonicalSkill,
+  plannedFiles: PlannedFile[],
+): string {
+  const lines = [
+    `Dry run: install ${skill.name}@${skill.version}`,
+    ...plannedFiles.map((file) => `copy: ${file.ownedPath}`),
+    ...skill.commands.map((command) => `effect: command ${command}`),
+    ...skill.network.map((endpoint) => `effect: network ${endpoint}`),
+    ...skill.secrets.map((secret) => `effect: secret ${secret}`),
+    ...skill.writeLocations.map(
+      (location) => `effect: writeLocation ${location}`,
+    ),
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+function assertDependenciesAvailable(dependencies: string[]): void {
+  for (const dependency of dependencies) {
+    const result = spawnSync("which", [dependency], { encoding: "utf8" });
+    if (result.status !== 0) {
+      throw new Error(`Missing required dependency: ${dependency}.`);
+    }
+  }
+}
+
+export function getPermissionReview(error: unknown): string | undefined {
+  if (
+    error instanceof Error &&
+    "permissionReview" in error &&
+    typeof (error as { permissionReview?: unknown }).permissionReview ===
+      "string"
+  ) {
+    return (error as { permissionReview: string }).permissionReview;
+  }
+
+  return undefined;
 }
 
 async function assertSafeMutation(

@@ -1,0 +1,27 @@
+{
+  "name": "scripted-example",
+  "version": "1.0.0",
+  "description": "A script-bearing canonical skill fixture used for permission review.",
+  "license": "MIT",
+  "compatibility": ["codex", "claude-code"],
+  "files": [
+    "SKILL.md",
+    "scripts/hello.sh",
+    "references/notes.md",
+    "templates/report.md",
+    "assets/logo.txt"
+  ],
+  "resources": {
+    "scripts": ["scripts/hello.sh"],
+    "references": ["references/notes.md"],
+    "templates": ["templates/report.md"],
+    "assets": ["assets/logo.txt"]
+  },
+  "runtime": "bash",
+  "commands": ["bash scripts/hello.sh"],
+  "dependencies": ["bash"],
+  "network": ["https://example.com"],
+  "secrets": ["SCRIPTED_EXAMPLE_TOKEN"],
+  "permissions": ["execute", "network", "secrets", "filesystem-write"],
+  "writeLocations": [".scratch/scripted-example/"]
+}

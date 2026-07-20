@@ -12,3 +12,6 @@
 | Managed installation | A skill install recorded in `agent-skills.lock.json` with source, version, agent, scope, and installer-owned files. |
 | Explicit update | A non-silent `update` that revises managed files and lock state only after an explicit command (optional `--dry-run` / `--force`). |
 | Update status | List column for a managed installation: `up-to-date`, `update-available:<version>`, `source-version:<version>`, or `source-unavailable`. |
+| Bundled resources | Optional skill package paths declared under `resources` (`scripts`, `references`, `templates`, `assets`) and listed in `files`. |
+| Sensitive capabilities | Declared needs that require review before install: commands, dependencies, network, secrets, permissions, write locations, and non-empty `resources.scripts`. |
+| Permission review | Concise pre-install summary of declared capabilities and bundled resources; interactive flows prompt for acceptance, non-interactive installs require `--accept-permissions` (dry-run may preview without accepting). |

@@ -8,6 +8,11 @@ import {
   type CatalogOnlyEntry,
   type MaintainedCatalogEntry,
 } from "./catalog.js";
+import {
+  formatPermissionReview,
+  hasSensitiveCapabilities,
+  readCanonicalSkill,
+} from "./canonical-skill.js";
 import { installLocalSkill } from "./installer.js";
 import {
   parseSupportedAgent,
@@ -71,12 +76,33 @@ export async function runInteractiveAdd(options: {
       (await ask(lines, "Scope (project): ")).trim() || "project";
     const scope = parseSupportedScope(scopeAnswer);
 
-    const installed = await installLocalSkill({
+    const skill = await readCanonicalSkill(selected.path);
+    let acceptPermissions = false;
+    if (hasSensitiveCapabilities(skill)) {
+      output.write(formatPermissionReview(skill));
+      const answer = (
+        await ask(lines, "Accept sensitive capabilities? [y/N]: ")
+      )
+        .trim()
+        .toLowerCase();
+      if (answer !== "y" && answer !== "yes") {
+        return { cancelled: true, message: "Installation cancelled." };
+      }
+      acceptPermissions = true;
+    }
+
+    const result = await installLocalSkill({
       source: selected.path,
       projectDirectory: options.projectDirectory,
       agent,
       scope,
+      acceptPermissions,
     });
+
+    const installed = result.installation;
+    if (installed === undefined) {
+      throw new Error("Installation did not produce a lock record.");
+    }
 
     return {
       cancelled: false,
