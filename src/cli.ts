@@ -70,16 +70,19 @@ async function runAdd(args: string[]): Promise<void> {
   }
 
   if (agent === undefined) {
-    throw new Error("Usage: agent-skills add <local-source> --agent codex");
+    throw new Error(
+      "Usage: agent-skills add <local-source> --agent <claude-code|codex> [--scope <global|project>]",
+    );
   }
 
   const supportedAgent = parseSupportedAgent(agent);
-  parseSupportedScope(scope);
+  const supportedScope = parseSupportedScope(scope);
 
   const installed = await installLocalSkill({
     source,
     projectDirectory: process.cwd(),
     agent: supportedAgent,
+    scope: supportedScope,
   });
 
   process.stdout.write(

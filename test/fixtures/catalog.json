@@ -4,7 +4,7 @@
       "kind": "maintained",
       "name": "example",
       "version": "1.0.0",
-      "compatibility": ["codex"],
+      "compatibility": ["codex", "claude-code"],
       "description": "A minimal canonical skill fixture.",
       "path": "skills/example"
     },

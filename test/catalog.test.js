@@ -29,7 +29,7 @@ test("lists maintained skills and catalog-only recommendations distinctly", asyn
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     result.stdout,
-    /example\s+1\.0\.0\s+maintained\s+codex\s+A minimal canonical skill fixture\./,
+    /example\s+1\.0\.0\s+maintained\s+codex,claude-code\s+A minimal canonical skill fixture\./,
   );
   assert.match(
     result.stdout,
@@ -145,7 +145,7 @@ test("rejects an unsupported agent choice during interactive add", async () => {
   assert.equal(result.status, 1);
   assert.match(
     result.stderr,
-    /Unsupported agent "cursor"\. Supported agents: codex\./,
+    /Unsupported agent "cursor"\. Supported agents: claude-code, codex\./,
   );
   await assert.rejects(readFile(join(project, "agent-skills.lock.json")));
 });

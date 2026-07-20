@@ -10,41 +10,82 @@ const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const cliPath = join(repositoryRoot, "dist", "cli.js");
 const fixturePath = join(repositoryRoot, "test", "fixtures", "skills", "example");
 
-test("installs one local canonical skill for Codex at project scope", async () => {
-  const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
+const sharedInstallationCases = [
+  {
+    agent: "codex",
+    scope: "project",
+    ownedFile: ".agents/skills/example/SKILL.md",
+    resolveInstallRoot(context) {
+      return context.project;
+    },
+  },
+  {
+    agent: "claude-code",
+    scope: "global",
+    ownedFile: ".claude/skills/example/SKILL.md",
+    resolveInstallRoot(context) {
+      return context.home;
+    },
+  },
+];
 
-  const result = spawnSync(
-    process.execPath,
-    [cliPath, "add", fixturePath, "--agent", "codex"],
-    { cwd: project, encoding: "utf8" },
-  );
+for (const installationCase of sharedInstallationCases) {
+  test(`shared adapter contract installs example for ${installationCase.agent} at ${installationCase.scope} scope`, async () => {
+    const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
+    const home = await mkdtemp(join(tmpdir(), "agent-skills-home-"));
+    const context = { project, home };
+    const installRoot = installationCase.resolveInstallRoot(context);
 
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Installed example@1\.0\.0 for codex \(project\)/);
-
-  const installedSkill = await readFile(
-    join(project, ".agents", "skills", "example", "SKILL.md"),
-    "utf8",
-  );
-  assert.match(installedSkill, /name: example/);
-
-  const lock = JSON.parse(
-    await readFile(join(project, "agent-skills.lock.json"), "utf8"),
-  );
-  assert.deepEqual(lock, {
-    lockfileVersion: 1,
-    installations: [
+    const result = spawnSync(
+      process.execPath,
+      [
+        cliPath,
+        "add",
+        fixturePath,
+        "--agent",
+        installationCase.agent,
+        "--scope",
+        installationCase.scope,
+      ],
       {
-        name: "example",
-        source: { type: "local", path: fixturePath },
-        version: "1.0.0",
-        agent: "codex",
-        scope: "project",
-        files: [".agents/skills/example/SKILL.md"],
+        cwd: project,
+        encoding: "utf8",
+        env: { ...process.env, HOME: home },
       },
-    ],
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(
+      result.stdout,
+      new RegExp(
+        `Installed example@1\\.0\\.0 for ${installationCase.agent} \\(${installationCase.scope}\\)`,
+      ),
+    );
+
+    const installedSkill = await readFile(
+      join(installRoot, ...installationCase.ownedFile.split("/")),
+      "utf8",
+    );
+    assert.match(installedSkill, /name: example/);
+
+    const lock = JSON.parse(
+      await readFile(join(project, "agent-skills.lock.json"), "utf8"),
+    );
+    assert.deepEqual(lock, {
+      lockfileVersion: 1,
+      installations: [
+        {
+          name: "example",
+          source: { type: "local", path: fixturePath },
+          version: "1.0.0",
+          agent: installationCase.agent,
+          scope: installationCase.scope,
+          files: [installationCase.ownedFile],
+        },
+      ],
+    });
   });
-});
+}
 
 test("preserves existing lock installations when adding another skill", async () => {
   const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
@@ -123,10 +164,13 @@ test("rejects an unsupported agent with an actionable error", async () => {
   );
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Unsupported agent "cursor"\. Supported agents: codex\./);
+  assert.match(
+    result.stderr,
+    /Unsupported agent "cursor"\. Supported agents: claude-code, codex\./,
+  );
 });
 
-test("rejects a non-project scope in the first installation slice", async () => {
+test("rejects an unsupported scope with an actionable error", async () => {
   const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
 
   const result = spawnSync(
@@ -138,7 +182,7 @@ test("rejects a non-project scope in the first installation slice", async () => 
       "--agent",
       "codex",
       "--scope",
-      "global",
+      "team",
     ],
     { cwd: project, encoding: "utf8" },
   );
@@ -146,7 +190,104 @@ test("rejects a non-project scope in the first installation slice", async () => 
   assert.equal(result.status, 1);
   assert.match(
     result.stderr,
-    /Unsupported scope "global"\. Supported scopes: project\./,
+    /Unsupported scope "team"\. Supported scopes: global, project\./,
+  );
+});
+
+test("claude-code defaults to project scope and does not write under HOME", async () => {
+  const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
+  const home = await mkdtemp(join(tmpdir(), "agent-skills-home-"));
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "add", fixturePath, "--agent", "claude-code"],
+    {
+      cwd: project,
+      encoding: "utf8",
+      env: { ...process.env, HOME: home },
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Installed example@1\.0\.0 for claude-code \(project\)/);
+
+  const installedSkill = await readFile(
+    join(project, ".claude", "skills", "example", "SKILL.md"),
+    "utf8",
+  );
+  assert.match(installedSkill, /name: example/);
+  await assert.rejects(
+    readFile(join(home, ".claude", "skills", "example", "SKILL.md")),
+  );
+
+  const lock = JSON.parse(
+    await readFile(join(project, "agent-skills.lock.json"), "utf8"),
+  );
+  assert.equal(lock.installations[0]?.scope, "project");
+});
+
+test("preserves unrelated Claude Code global configuration", async () => {
+  const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
+  const home = await mkdtemp(join(tmpdir(), "agent-skills-home-"));
+  const settingsPath = join(home, ".claude", "settings.json");
+  await mkdir(dirname(settingsPath), { recursive: true });
+  await writeFile(settingsPath, '{"theme":"dark"}\n');
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "add",
+      fixturePath,
+      "--agent",
+      "claude-code",
+      "--scope",
+      "global",
+    ],
+    {
+      cwd: project,
+      encoding: "utf8",
+      env: { ...process.env, HOME: home },
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await readFile(settingsPath, "utf8"), '{"theme":"dark"}\n');
+});
+
+test("fails safely when a Claude Code global destination already exists", async () => {
+  const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
+  const home = await mkdtemp(join(tmpdir(), "agent-skills-home-"));
+  const destination = join(home, ".claude", "skills", "example", "SKILL.md");
+  await mkdir(dirname(destination), { recursive: true });
+  await writeFile(destination, "# pre-existing manual skill\n");
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "add",
+      fixturePath,
+      "--agent",
+      "claude-code",
+      "--scope",
+      "global",
+    ],
+    {
+      cwd: project,
+      encoding: "utf8",
+      env: { ...process.env, HOME: home },
+    },
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /Destination already exists: .*[/\\]\.claude[/\\]skills[/\\]example[/\\]SKILL\.md/,
+  );
+  assert.equal(
+    await readFile(destination, "utf8"),
+    "# pre-existing manual skill\n",
   );
 });
 

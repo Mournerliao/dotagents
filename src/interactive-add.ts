@@ -69,12 +69,13 @@ export async function runInteractiveAdd(options: {
 
     const scopeAnswer =
       (await ask(lines, "Scope (project): ")).trim() || "project";
-    parseSupportedScope(scopeAnswer);
+    const scope = parseSupportedScope(scopeAnswer);
 
     const installed = await installLocalSkill({
       source: selected.path,
       projectDirectory: options.projectDirectory,
       agent,
+      scope,
     });
 
     return {

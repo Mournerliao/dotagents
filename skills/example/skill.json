@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "description": "A minimal canonical skill fixture.",
   "license": "MIT",
-  "compatibility": ["codex"],
+  "compatibility": ["codex", "claude-code"],
   "files": ["SKILL.md"]
 }
