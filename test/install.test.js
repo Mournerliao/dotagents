@@ -46,6 +46,73 @@ test("installs one local canonical skill for Codex at project scope", async () =
   });
 });
 
+test("preserves existing lock installations when adding another skill", async () => {
+  const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
+  const secondSource = join(project, "second-skill");
+  await mkdir(secondSource);
+  await writeFile(
+    join(secondSource, "skill.json"),
+    JSON.stringify({
+      name: "second-skill",
+      version: "2.0.0",
+      description: "A second local skill.",
+      license: "MIT",
+      compatibility: ["codex"],
+      files: ["SKILL.md"],
+    }),
+  );
+  await writeFile(join(secondSource, "SKILL.md"), "# Second skill\n");
+
+  const first = spawnSync(
+    process.execPath,
+    [cliPath, "add", fixturePath, "--agent", "codex"],
+    { cwd: project, encoding: "utf8" },
+  );
+  assert.equal(first.status, 0, first.stderr);
+
+  const second = spawnSync(
+    process.execPath,
+    [cliPath, "add", secondSource, "--agent", "codex"],
+    { cwd: project, encoding: "utf8" },
+  );
+  assert.equal(second.status, 0, second.stderr);
+
+  const installedSecond = await readFile(
+    join(project, ".agents", "skills", "second-skill", "SKILL.md"),
+    "utf8",
+  );
+  assert.match(installedSecond, /Second skill/);
+
+  const lock = JSON.parse(
+    await readFile(join(project, "agent-skills.lock.json"), "utf8"),
+  );
+  assert.equal(lock.lockfileVersion, 1);
+  assert.equal(lock.installations.length, 2);
+  assert.deepEqual(
+    lock.installations.map((installation) => installation.name).sort(),
+    ["example", "second-skill"],
+  );
+  assert.deepEqual(lock.installations.find((item) => item.name === "example"), {
+    name: "example",
+    source: { type: "local", path: fixturePath },
+    version: "1.0.0",
+    agent: "codex",
+    scope: "project",
+    files: [".agents/skills/example/SKILL.md"],
+  });
+  assert.deepEqual(
+    lock.installations.find((item) => item.name === "second-skill"),
+    {
+      name: "second-skill",
+      source: { type: "local", path: secondSource },
+      version: "2.0.0",
+      agent: "codex",
+      scope: "project",
+      files: [".agents/skills/second-skill/SKILL.md"],
+    },
+  );
+});
+
 test("rejects an unsupported agent with an actionable error", async () => {
   const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
 
