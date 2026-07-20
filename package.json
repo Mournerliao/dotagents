@@ -1,19 +1,49 @@
 {
-  "name": "agent-skills",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@mournerliao/agent-skills",
+  "version": "0.1.0",
+  "description": "Curated cross-agent skill distribution CLI for Codex and Claude Code",
   "type": "module",
+  "license": "MIT",
   "bin": {
     "agent-skills": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "catalog",
+    "skills",
+    "docs/zh",
+    "docs/versioning.md",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test test/**/*.test.js",
     "validate:canonical": "npm run build && node dist/cli.js validate skills/example && node dist/cli.js validate skills/summarize && node dist/cli.js validate skills/find-skills-lite",
     "validate:provenance": "npm run build && node dist/cli.js validate --catalog catalog/catalog.json",
     "ci": "npm run typecheck && npm test && npm run validate:provenance"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mournerliao/agent-skills.git"
+  },
+  "homepage": "https://github.com/Mournerliao/agent-skills#readme",
+  "bugs": {
+    "url": "https://github.com/Mournerliao/agent-skills/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "claude-code",
+    "skills",
+    "cli"
+  ],
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.8.0"
