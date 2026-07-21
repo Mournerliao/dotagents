@@ -1,120 +1,92 @@
 # agent-skills
 
-Curated skill distribution for coding agents. This repository hosts original and intentionally maintained skills, recommends third-party skills without casually vendoring them, and provides a CLI that installs the same canonical skill into agent-specific layouts.
+Personal capability library for coding agents. Record the skills (and later other capability kinds) you care about, sync the catalog through npm, and install / update / remove on any machine — with the same CLI for humans and agents.
 
 **Chinese guide:** [docs/zh/guide.md](docs/zh/guide.md)
 
 ## Install
 
-One-command usage (after publish):
-
 ```bash
-npx @mournerliao/agent-skills list --catalog
-```
-
-Or install globally:
-
-```bash
+npx @mournerliao/agent-skills list
+# or
 npm install -g @mournerliao/agent-skills
-agent-skills list --catalog
-```
-
-From a clone of this repository:
-
-```bash
-npm ci
-npm run build
-node dist/cli.js list --catalog
+agent-skills list
 ```
 
 Requires Node.js 20+.
 
-## Supported platforms
+## What this is
 
-| Agent | Status |
-|-------|--------|
-| Codex | Supported |
-| Claude Code | Supported |
-| Cursor | Future target |
-| WorkBuddy | Future target |
+| Concept | Meaning |
+|---------|---------|
+| Sync set / catalog | Your curated library: what exists and how to obtain it |
+| Maintained | Canonical skill source hosted in this package |
+| Delegated | Upstream install recipe (runs `npx skills`, `npx impeccable`, …) |
+| Link-only | Upstream link without an install recipe |
 
-Only Codex and Claude Code are advertised as supported in the first release.
-
-## Quick start (Codex, project scope)
-
-After installing the package, the CLI ships with a bundled catalog and maintained skills. From any project directory:
-
-```bash
-# Browse the curated catalog (bundled with the package)
-agent-skills list --catalog
-
-# Interactive install: pick a maintained skill, agent=codex, scope=project
-agent-skills add
-```
-
-Non-interactive install from a local canonical skill directory (clone or unpacked package path):
-
-```bash
-agent-skills add /path/to/skill --agent codex --scope project
-```
-
-Project scope is the default. Global scope is available with `--scope global` (Claude Code installs commonly use the global home layout).
+This CLI does **not** keep a per-machine lock of what you installed. Pick agent and scope when you install.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `add` | Install a skill (interactive catalog flow or non-interactive local source) |
-| `list` | List installed managed skills, or `list --catalog` for curated entries |
-| `update` | Explicitly update a managed skill (`--dry-run`, `--force`) |
-| `remove` | Remove installer-owned files and lock state for a managed skill |
-| `validate` | Validate a local skill directory or `validate --catalog` |
+| `list` | Show the catalog (sync set) |
+| `install` / `add` | Install a catalog entry |
+| `update` | Update a catalog entry |
+| `remove` | Remove a maintained install (or run a delegated remove recipe) |
+| `record` | Add/refresh a catalog entry (`--entry-json`) — does not install |
+| `validate` | Validate a skill directory or the catalog |
 
-### Interactive vs non-interactive
+Common flags: `--agent`, `--scope`, `--catalog`, `--dry-run`, `--accept-permissions`, `--force`, `--json`.
 
-- **Interactive:** `agent-skills add` (optional `--catalog <path>`) prompts for skill, agent, and scope.
-- **Non-interactive:** `agent-skills add <local-source> --agent <codex\|claude-code> [--scope <project\|global>] [--dry-run] [--accept-permissions]`
+### Examples
 
-### Dry-run, lock state, and permissions
+```bash
+# Browse the library
+agent-skills list
+agent-skills list --json
 
-- `--dry-run` previews planned writes and permission requirements without changing the filesystem.
-- Successful installs record source, skill version, agent, scope, and owned files in `agent-skills.lock.json`.
-- Skills that declare sensitive capabilities (commands, network, secrets, write locations, or bundled scripts) require confirmation interactively, or `--accept-permissions` for non-interactive installs.
+# Install a maintained skill for Codex in the current project
+agent-skills install commit --agent codex --scope project
+
+# Preview a delegated upstream install
+agent-skills install mattpocock-skills --dry-run
+
+# Run the delegated recipe (requires explicit acceptance)
+agent-skills install impeccable --accept-permissions
+
+# Record a new delegated entry (agent-friendly)
+agent-skills record --entry-json '{"kind":"delegated","name":"…", ...}'
+```
+
+## Supported platforms (maintained installs)
+
+| Agent | Status |
+|-------|--------|
+| Codex | Supported |
+| Claude Code | Supported |
+| Cursor | Future target for maintained adapters; delegated recipes may still target Cursor via upstream CLIs |
 
 ## Catalog trust boundary
 
 | Kind | Meaning |
 |------|---------|
-| `maintained` | Installable source hosted in this repository (original or maintained fork) |
-| `catalog-only` | Upstream recommendation / link only — not copied or installed by default |
+| `maintained` | Installable source in this package |
+| `delegated` | Recipe runs an upstream installer; source is not vendored here |
+| `link-only` | Recommendation link only |
 
-Maintained forks declare provenance (upstream, baseline, reason, changes, attribution). Repository-level licensing does not override third-party licenses.
-
-## Maintained skills in this release
-
-| Skill | Notes |
-|-------|-------|
-| `summarize` | Concise conversation/selection summaries (Codex) |
-| `find-skills-lite` | Discover skills through this catalog without third-party marketplace CLIs |
-| `example` | Minimal reference skill for contributors and adapter smoke checks |
+Prefer **delegated** when a reliable upstream installer exists. Repository licensing does not override third-party licenses.
 
 ## Versioning
 
-CLI releases and skill versions are independent. See [docs/versioning.md](docs/versioning.md) and the root [CHANGELOG.md](CHANGELOG.md).
+CLI releases and skill versions are independent. See [docs/versioning.md](docs/versioning.md) and [CHANGELOG.md](CHANGELOG.md).
+
+Domain language: [CONTEXT.md](CONTEXT.md). Architecture decision: [docs/adr/0001-personal-capability-library.md](docs/adr/0001-personal-capability-library.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Pull requests are welcome; the maintainer retains final curation authority.
-
-## Known limitations
-
-- No silent or background skill updates.
-- No model behavior scoring or prompt-quality rankings.
-- Catalog-only third-party compatibility is not guaranteed.
-- Cursor and WorkBuddy adapters are not part of this release.
-
-Full release notes: [CHANGELOG.md](CHANGELOG.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT for original repository content and the CLI. Third-party and forked skill content retains its own license and attribution.
+MIT for original repository content and the CLI. Third-party and delegated upstream content retains its own license and attribution.

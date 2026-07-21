@@ -1,7 +1,7 @@
 {
   "name": "@mournerliao/agent-skills",
-  "version": "0.1.0",
-  "description": "Curated cross-agent skill distribution CLI for Codex and Claude Code",
+  "version": "0.2.0",
+  "description": "Personal capability library CLI for syncing curated agent skills (and later other capability kinds)",
   "type": "module",
   "license": "MIT",
   "bin": {
@@ -13,16 +13,18 @@
     "skills",
     "docs/zh",
     "docs/versioning.md",
+    "docs/adr",
     "LICENSE",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "CONTEXT.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test test/**/*.test.js",
-    "validate:canonical": "npm run build && node dist/cli.js validate skills/example && node dist/cli.js validate skills/summarize && node dist/cli.js validate skills/find-skills-lite",
+    "validate:canonical": "npm run build && node dist/cli.js validate skills/example && node dist/cli.js validate skills/summarize && node dist/cli.js validate skills/find-skills-lite && node dist/cli.js validate skills/commit",
     "validate:provenance": "npm run build && node dist/cli.js validate --catalog catalog/catalog.json",
     "ci": "npm run typecheck && npm test && npm run validate:provenance"
   },

@@ -1,8 +1,20 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+
+import { toCatalogRelativePath } from "./paths.js";
+
+export type CapabilityKind = "skill" | "mcp";
+export type InclusionKind = "maintained" | "delegated" | "link-only";
+
+export interface InstallRecipe {
+  install: string[];
+  update?: string[];
+  remove?: string[];
+}
 
 export interface MaintainedCatalogEntry {
   kind: "maintained";
+  capabilityKind: CapabilityKind;
   name: string;
   version: string;
   compatibility: string[];
@@ -10,8 +22,22 @@ export interface MaintainedCatalogEntry {
   path: string;
 }
 
-export interface CatalogOnlyEntry {
-  kind: "catalog-only";
+export interface DelegatedCatalogEntry {
+  kind: "delegated";
+  capabilityKind: CapabilityKind;
+  name: string;
+  upstream: string;
+  author: string;
+  license: string;
+  compatibility: string[];
+  compatibilityNotes?: string;
+  description: string;
+  recipe: InstallRecipe;
+}
+
+export interface LinkOnlyCatalogEntry {
+  kind: "link-only";
+  capabilityKind: CapabilityKind;
   name: string;
   upstream: string;
   author: string;
@@ -22,9 +48,13 @@ export interface CatalogOnlyEntry {
   description: string;
 }
 
-export type CatalogEntry = MaintainedCatalogEntry | CatalogOnlyEntry;
+export type CatalogEntry =
+  | MaintainedCatalogEntry
+  | DelegatedCatalogEntry
+  | LinkOnlyCatalogEntry;
 
 export interface Catalog {
+  catalogPath: string;
   rootDirectory: string;
   entries: CatalogEntry[];
 }
@@ -39,9 +69,7 @@ export async function readCatalog(catalogPath: string): Promise<Catalog> {
     !Array.isArray(parsed.entries) ||
     parsed.entries.length === 0
   ) {
-    throw new Error(
-      'Invalid catalog: expected a non-empty "entries" array.',
-    );
+    throw new Error('Invalid catalog: expected a non-empty "entries" array.');
   }
 
   const rootDirectory = dirname(absoluteCatalogPath);
@@ -51,18 +79,50 @@ export async function readCatalog(catalogPath: string): Promise<Catalog> {
     entries.push(await parseCatalogEntry(entry, rootDirectory));
   }
 
-  return { rootDirectory, entries };
+  return {
+    catalogPath: absoluteCatalogPath,
+    rootDirectory,
+    entries,
+  };
+}
+
+export async function writeCatalog(catalog: Catalog): Promise<void> {
+  const serializable = {
+    entries: catalog.entries.map((entry) => serializeEntry(entry, catalog.rootDirectory)),
+  };
+  await writeFile(
+    catalog.catalogPath,
+    `${JSON.stringify(serializable, null, 2)}\n`,
+  );
+}
+
+export function findCatalogEntry(
+  catalog: Catalog,
+  name: string,
+): CatalogEntry {
+  const matches = catalog.entries.filter((entry) => entry.name === name);
+  if (matches.length === 0) {
+    throw new Error(`No catalog entry named "${name}".`);
+  }
+  if (matches.length > 1) {
+    throw new Error(`Multiple catalog entries named "${name}".`);
+  }
+  const entry = matches[0];
+  if (entry === undefined) {
+    throw new Error(`No catalog entry named "${name}".`);
+  }
+  return entry;
 }
 
 export function formatCatalogListing(catalog: Catalog): string {
-  const lines = catalog.entries.map((entry) => formatListingLine(entry));
-  return `${lines.join("\n")}\n`;
+  return `${catalog.entries.map((entry) => formatListingLine(entry)).join("\n")}\n`;
 }
 
 export function formatListingLine(entry: CatalogEntry): string {
   if (entry.kind === "maintained") {
     return [
       entry.name,
+      entry.capabilityKind,
       entry.version,
       entry.kind,
       entry.compatibility.join(","),
@@ -72,6 +132,7 @@ export function formatListingLine(entry: CatalogEntry): string {
 
   return [
     entry.name,
+    entry.capabilityKind,
     entry.upstream,
     entry.kind,
     entry.compatibility.join(","),
@@ -79,27 +140,64 @@ export function formatListingLine(entry: CatalogEntry): string {
   ].join("\t");
 }
 
-export function maintainedEntries(
-  catalog: Catalog,
-): MaintainedCatalogEntry[] {
-  return catalog.entries.filter(
-    (entry): entry is MaintainedCatalogEntry => entry.kind === "maintained",
-  );
+export function catalogToJson(catalog: Catalog): unknown {
+  return {
+    entries: catalog.entries.map((entry) => {
+      if (entry.kind === "maintained") {
+        return {
+          kind: entry.kind,
+          capabilityKind: entry.capabilityKind,
+          name: entry.name,
+          version: entry.version,
+          compatibility: entry.compatibility,
+          description: entry.description,
+          path: entry.path,
+        };
+      }
+      if (entry.kind === "delegated") {
+        return {
+          kind: entry.kind,
+          capabilityKind: entry.capabilityKind,
+          name: entry.name,
+          upstream: entry.upstream,
+          author: entry.author,
+          license: entry.license,
+          compatibility: entry.compatibility,
+          ...(entry.compatibilityNotes === undefined
+            ? {}
+            : { compatibilityNotes: entry.compatibilityNotes }),
+          description: entry.description,
+          recipe: entry.recipe,
+        };
+      }
+      return {
+        kind: entry.kind,
+        capabilityKind: entry.capabilityKind,
+        name: entry.name,
+        upstream: entry.upstream,
+        author: entry.author,
+        license: entry.license,
+        compatibility: entry.compatibility,
+        ...(entry.compatibilityNotes === undefined
+          ? {}
+          : { compatibilityNotes: entry.compatibilityNotes }),
+        recommendation: entry.recommendation,
+        description: entry.description,
+      };
+    }),
+  };
 }
 
-export function catalogOnlyEntries(catalog: Catalog): CatalogOnlyEntry[] {
-  return catalog.entries.filter(
-    (entry): entry is CatalogOnlyEntry => entry.kind === "catalog-only",
-  );
-}
-
-async function parseCatalogEntry(
+export async function parseCatalogEntry(
   entry: unknown,
   rootDirectory: string,
 ): Promise<CatalogEntry> {
   if (!isRecord(entry) || typeof entry.kind !== "string") {
     throw new Error('Invalid catalog entry: "kind" is required.');
   }
+
+  const kind = normalizeKind(entry.kind);
+  const capabilityKind = parseCapabilityKind(entry.capabilityKind);
 
   if (
     typeof entry.name !== "string" ||
@@ -117,7 +215,7 @@ async function parseCatalogEntry(
     );
   }
 
-  if (entry.kind === "maintained") {
+  if (kind === "maintained") {
     if (
       typeof entry.version !== "string" ||
       entry.version.trim() === "" ||
@@ -141,6 +239,7 @@ async function parseCatalogEntry(
 
     return {
       kind: "maintained",
+      capabilityKind,
       name: entry.name,
       version: entry.version,
       compatibility: [...entry.compatibility] as string[],
@@ -149,63 +248,209 @@ async function parseCatalogEntry(
     };
   }
 
-  if (entry.kind === "catalog-only") {
-    if (typeof entry.upstream !== "string" || entry.upstream.trim() === "") {
+  if (kind === "delegated") {
+    const recipe = parseRecipe(entry.recipe);
+    requireUpstreamMeta(entry, "delegated");
+
+    const delegated: DelegatedCatalogEntry = {
+      kind: "delegated",
+      capabilityKind,
+      name: entry.name,
+      upstream: entry.upstream as string,
+      author: entry.author as string,
+      license: entry.license as string,
+      compatibility: [...entry.compatibility] as string[],
+      description: entry.description,
+      recipe,
+    };
+
+    assignCompatibilityNotes(entry, delegated);
+    return delegated;
+  }
+
+  requireUpstreamMeta(entry, "link-only");
+  if (
+    typeof entry.recommendation !== "string" ||
+    entry.recommendation.trim() === ""
+  ) {
+    throw new Error(
+      'Invalid link-only catalog entry: "recommendation" is required.',
+    );
+  }
+
+  const linkOnly: LinkOnlyCatalogEntry = {
+    kind: "link-only",
+    capabilityKind,
+    name: entry.name,
+    upstream: entry.upstream as string,
+    author: entry.author as string,
+    license: entry.license as string,
+    compatibility: [...entry.compatibility] as string[],
+    recommendation: entry.recommendation,
+    description: entry.description,
+  };
+  assignCompatibilityNotes(entry, linkOnly);
+  return linkOnly;
+}
+
+function normalizeKind(kind: string): InclusionKind {
+  if (kind === "catalog-only") {
+    return "link-only";
+  }
+  if (kind === "maintained" || kind === "delegated" || kind === "link-only") {
+    return kind;
+  }
+  throw new Error(
+    `Invalid catalog entry kind "${kind}". Expected "maintained", "delegated", or "link-only".`,
+  );
+}
+
+function parseCapabilityKind(value: unknown): CapabilityKind {
+  if (value === undefined) {
+    return "skill";
+  }
+  if (value === "skill" || value === "mcp") {
+    return value;
+  }
+  throw new Error(
+    'Invalid catalog entry: "capabilityKind" must be "skill" or "mcp" when present.',
+  );
+}
+
+function parseRecipe(value: unknown): InstallRecipe {
+  if (!isRecord(value) || !isArgv(value.install)) {
+    throw new Error(
+      'Invalid delegated catalog entry: "recipe.install" must be a non-empty argv array.',
+    );
+  }
+
+  const recipe: InstallRecipe = {
+    install: [...value.install],
+  };
+
+  if (value.update !== undefined) {
+    if (!isArgv(value.update)) {
       throw new Error(
-        'Invalid catalog-only entry: "upstream" is required.',
+        'Invalid delegated catalog entry: "recipe.update" must be a non-empty argv array when present.',
       );
     }
+    recipe.update = [...value.update];
+  }
 
-    if (!isHttpsUrl(entry.upstream)) {
+  if (value.remove !== undefined) {
+    if (!isArgv(value.remove)) {
       throw new Error(
-        'Invalid catalog-only entry: "upstream" must be an https URL.',
+        'Invalid delegated catalog entry: "recipe.remove" must be a non-empty argv array when present.',
       );
     }
+    recipe.remove = [...value.remove];
+  }
 
+  return recipe;
+}
+
+function requireUpstreamMeta(
+  entry: Record<string, unknown>,
+  label: string,
+): asserts entry is Record<string, unknown> & {
+  upstream: string;
+  author: string;
+  license: string;
+} {
+  if (typeof entry.upstream !== "string" || entry.upstream.trim() === "") {
+    throw new Error(`Invalid ${label} catalog entry: "upstream" is required.`);
+  }
+  if (!isHttpsUrl(entry.upstream)) {
+    throw new Error(
+      `Invalid ${label} catalog entry: "upstream" must be an https URL.`,
+    );
+  }
+  if (
+    typeof entry.author !== "string" ||
+    entry.author.trim() === "" ||
+    typeof entry.license !== "string" ||
+    entry.license.trim() === ""
+  ) {
+    throw new Error(
+      `Invalid ${label} catalog entry: "author" and "license" are required.`,
+    );
+  }
+}
+
+function assignCompatibilityNotes(
+  entry: Record<string, unknown>,
+  target: { compatibilityNotes?: string },
+): void {
+  if (
+    "compatibilityNotes" in entry &&
+    entry.compatibilityNotes !== undefined
+  ) {
     if (
-      typeof entry.author !== "string" ||
-      entry.author.trim() === "" ||
-      typeof entry.license !== "string" ||
-      entry.license.trim() === "" ||
-      typeof entry.recommendation !== "string" ||
-      entry.recommendation.trim() === ""
+      typeof entry.compatibilityNotes !== "string" ||
+      entry.compatibilityNotes.trim() === ""
     ) {
       throw new Error(
-        'Invalid catalog-only entry: "author", "license", and "recommendation" are required.',
+        'Invalid catalog entry: "compatibilityNotes" must be a non-empty string when present.',
       );
     }
+    target.compatibilityNotes = entry.compatibilityNotes;
+  }
+}
 
-    const catalogOnly: CatalogOnlyEntry = {
-      kind: "catalog-only",
+function serializeEntry(
+  entry: CatalogEntry,
+  rootDirectory: string,
+): Record<string, unknown> {
+  if (entry.kind === "maintained") {
+    return {
+      kind: "maintained",
+      capabilityKind: entry.capabilityKind,
+      name: entry.name,
+      version: entry.version,
+      compatibility: entry.compatibility,
+      description: entry.description,
+      path: toCatalogRelativePath(rootDirectory, entry.path),
+    };
+  }
+
+  if (entry.kind === "delegated") {
+    return {
+      kind: "delegated",
+      capabilityKind: entry.capabilityKind,
       name: entry.name,
       upstream: entry.upstream,
       author: entry.author,
       license: entry.license,
-      compatibility: [...entry.compatibility] as string[],
-      recommendation: entry.recommendation,
+      compatibility: entry.compatibility,
+      ...(entry.compatibilityNotes === undefined
+        ? {}
+        : { compatibilityNotes: entry.compatibilityNotes }),
       description: entry.description,
+      recipe: entry.recipe,
     };
-
-    if (
-      "compatibilityNotes" in entry &&
-      entry.compatibilityNotes !== undefined
-    ) {
-      if (
-        typeof entry.compatibilityNotes !== "string" ||
-        entry.compatibilityNotes.trim() === ""
-      ) {
-        throw new Error(
-          'Invalid catalog-only entry: "compatibilityNotes" must be a non-empty string when present.',
-        );
-      }
-      catalogOnly.compatibilityNotes = entry.compatibilityNotes;
-    }
-
-    return catalogOnly;
   }
 
-  throw new Error(
-    `Invalid catalog entry kind "${entry.kind}". Expected "maintained" or "catalog-only".`,
+  return {
+    kind: "link-only",
+    capabilityKind: entry.capabilityKind,
+    name: entry.name,
+    upstream: entry.upstream,
+    author: entry.author,
+    license: entry.license,
+    compatibility: entry.compatibility,
+    ...(entry.compatibilityNotes === undefined
+      ? {}
+      : { compatibilityNotes: entry.compatibilityNotes }),
+    recommendation: entry.recommendation,
+    description: entry.description,
+  };
+}
+
+function isArgv(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((part) => typeof part === "string" && part.trim() !== "")
   );
 }
 

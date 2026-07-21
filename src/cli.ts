@@ -4,19 +4,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  catalogToJson,
   formatCatalogListing,
   readCatalog,
 } from "./catalog.js";
-import { runInteractiveAdd } from "./interactive-add.js";
-import {
-  formatInstalledListing,
-  getPermissionReview,
-  installLocalSkill,
-  listInstalledSkills,
-  removeLocalSkill,
-  updateLocalSkill,
-} from "./installer.js";
 import { readCanonicalSkill } from "./canonical-skill.js";
+import { getPermissionReview, runLifecycle } from "./lifecycle.js";
+import { emitResult } from "./output.js";
+import { recordCatalogEntry } from "./record.js";
 import {
   parseSupportedAgent,
   parseSupportedScope,
@@ -24,51 +19,70 @@ import {
 
 const args = process.argv.slice(2);
 const command = args[0];
+const json = args.includes("--json");
 
 try {
   if (command === "validate") {
-    await runValidate(args.slice(1));
+    await runValidate(args.slice(1), json);
   } else if (command === "list") {
-    await runList(args.slice(1));
-  } else if (command === "add") {
-    await runAdd(args.slice(1));
+    await runList(args.slice(1), json);
+  } else if (command === "install" || command === "add") {
+    await runLifecycleCommand(args.slice(1), "install", json);
   } else if (command === "update") {
-    await runUpdate(args.slice(1));
+    await runLifecycleCommand(args.slice(1), "update", json);
   } else if (command === "remove") {
-    await runRemove(args.slice(1));
+    await runLifecycleCommand(args.slice(1), "remove", json);
+  } else if (command === "record") {
+    await runRecord(args.slice(1), json);
   } else {
     throw new Error(
-      "Usage: agent-skills <add|list|update|remove|validate> [options]",
+      "Usage: agent-skills <list|install|update|remove|record|validate|add> [options]",
     );
   }
 } catch (error) {
   const permissionReview = getPermissionReview(error);
-  if (permissionReview !== undefined) {
+  if (permissionReview !== undefined && !json) {
     process.stdout.write(permissionReview);
   }
   const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`Error: ${message}\n`);
+  if (json) {
+    process.stderr.write(
+      `${JSON.stringify({
+        ok: false,
+        error: message,
+        ...(permissionReview === undefined ? {} : { permissionReview }),
+      })}\n`,
+    );
+  } else {
+    process.stderr.write(`Error: ${message}\n`);
+  }
   process.exitCode = 1;
 }
 
-async function runValidate(args: string[]): Promise<void> {
-  rejectUnknownOptions(args, new Set(["--catalog"]));
+async function runValidate(argv: string[], asJson: boolean): Promise<void> {
+  rejectUnknownOptions(argv, new Set(["--catalog", "--json"]));
 
-  if (args.includes("--catalog")) {
-    const catalogPath = readOption(args, "--catalog") ?? defaultCatalogPath();
+  if (argv.includes("--catalog") || firstPositional(argv) === undefined) {
+    const catalogPath = readOption(argv, "--catalog") ?? defaultCatalogPath();
     const catalog = await readCatalog(catalogPath);
     for (const entry of catalog.entries) {
       if (entry.kind === "maintained") {
         await readCanonicalSkill(entry.path);
       }
     }
-    process.stdout.write(
-      `Valid catalog: ${catalog.entries.length} entries\n`,
-    );
+    emitResult({
+      json: asJson,
+      text: `Valid catalog: ${catalog.entries.length} entries`,
+      payload: {
+        ok: true,
+        entryCount: catalog.entries.length,
+        catalog: catalogToJson(catalog),
+      },
+    });
     return;
   }
 
-  const source = firstPositional(args);
+  const source = firstPositional(argv);
   if (source === undefined) {
     throw new Error(
       "Usage: agent-skills validate <local-source> | validate --catalog [path]",
@@ -76,185 +90,175 @@ async function runValidate(args: string[]): Promise<void> {
   }
 
   const skill = await readCanonicalSkill(source);
-  process.stdout.write(`Valid canonical skill: ${skill.name}@${skill.version}\n`);
+  emitResult({
+    json: asJson,
+    text: `Valid canonical skill: ${skill.name}@${skill.version}`,
+    payload: { ok: true, name: skill.name, version: skill.version },
+  });
 }
 
-async function runList(args: string[]): Promise<void> {
-  rejectUnknownOptions(args, new Set(["--catalog"]));
-  if (args.includes("--catalog")) {
-    const catalogPath = readOption(args, "--catalog") ?? defaultCatalogPath();
-    const catalog = await readCatalog(catalogPath);
-    process.stdout.write(formatCatalogListing(catalog));
-    return;
-  }
-
-  const listings = await listInstalledSkills(process.cwd());
-  process.stdout.write(formatInstalledListing(listings));
+async function runList(argv: string[], asJson: boolean): Promise<void> {
+  rejectUnknownOptions(argv, new Set(["--catalog", "--json"]));
+  const catalogPath = readOption(argv, "--catalog") ?? defaultCatalogPath();
+  const catalog = await readCatalog(catalogPath);
+  emitResult({
+    json: asJson,
+    text: formatCatalogListing(catalog),
+    payload: { ok: true, catalog: catalogToJson(catalog) },
+  });
 }
 
-async function runAdd(args: string[]): Promise<void> {
+async function runLifecycleCommand(
+  argv: string[],
+  action: "install" | "update" | "remove",
+  asJson: boolean,
+): Promise<void> {
   rejectUnknownOptions(
-    args,
+    argv,
     new Set([
       "--agent",
       "--scope",
       "--catalog",
       "--dry-run",
       "--accept-permissions",
+      "--force",
+      "--json",
     ]),
   );
 
-  const source = firstPositional(args);
-  const agent = readOption(args, "--agent");
-  const scope = readOption(args, "--scope") ?? "project";
-  const catalogPath = readOption(args, "--catalog") ?? defaultCatalogPath();
-  const dryRun = args.includes("--dry-run");
-  const acceptPermissions = args.includes("--accept-permissions");
-
-  if (source === undefined) {
-    const catalog = await readCatalog(catalogPath);
-    const result = await runInteractiveAdd({
-      catalog,
-      projectDirectory: process.cwd(),
-    });
-    process.stdout.write(`${result.message}\n`);
-    return;
-  }
-
-  if (agent === undefined) {
+  const name = firstPositional(argv);
+  if (name === undefined) {
     throw new Error(
-      "Usage: agent-skills add <local-source> --agent <claude-code|codex> [--scope <global|project>] [--dry-run] [--accept-permissions]",
+      `Usage: agent-skills ${action} <name> [--agent <claude-code|codex>] [--scope <global|project>] [--catalog <path>] [--dry-run] [--accept-permissions] [--force] [--json]`,
     );
   }
 
-  const supportedAgent = parseSupportedAgent(agent);
-  const supportedScope = parseSupportedScope(scope);
+  const catalogPath = readOption(argv, "--catalog") ?? defaultCatalogPath();
+  const catalog = await readCatalog(catalogPath);
+  const agentOption = readOption(argv, "--agent");
+  const scopeOption = readOption(argv, "--scope");
 
-  const result = await installLocalSkill({
-    source,
+  const result = await runLifecycle({
+    catalog,
+    name,
+    action,
     projectDirectory: process.cwd(),
-    agent: supportedAgent,
-    scope: supportedScope,
-    dryRun,
-    acceptPermissions,
+    ...(agentOption === undefined
+      ? {}
+      : { agent: parseSupportedAgent(agentOption) }),
+    ...(scopeOption === undefined
+      ? {}
+      : { scope: parseSupportedScope(scopeOption) }),
+    dryRun: argv.includes("--dry-run"),
+    acceptPermissions: argv.includes("--accept-permissions"),
+    force: argv.includes("--force"),
   });
 
-  if (result.permissionReview !== undefined) {
+  if (result.permissionReview !== undefined && !asJson && result.dryRun) {
     process.stdout.write(result.permissionReview);
   }
 
-  if (result.preview !== undefined) {
-    process.stdout.write(result.preview);
-    return;
-  }
-
-  const installed = result.installation;
-  if (installed === undefined) {
-    throw new Error("Installation did not produce a lock record.");
-  }
-
-  process.stdout.write(
-    `Installed ${installed.name}@${installed.version} for ${installed.agent} (${installed.scope})\n`,
-  );
+  emitResult({
+    json: asJson,
+    text: result.message,
+    payload: {
+      ok: true,
+      action: result.action,
+      dryRun: result.dryRun,
+      name: result.entry.name,
+      kind: result.entry.kind,
+      message: result.message,
+      ...(result.permissionReview === undefined
+        ? {}
+        : { permissionReview: result.permissionReview }),
+      ...(result.delegated === undefined
+        ? {}
+        : {
+            command: result.delegated.argv,
+            stdout: result.delegated.stdout,
+            stderr: result.delegated.stderr,
+          }),
+      ...(result.maintained === undefined
+        ? {}
+        : {
+            version: result.maintained.skill.version,
+            files: result.maintained.plannedFiles.map((file) => file.ownedPath),
+          }),
+    },
+  });
 }
 
-async function runUpdate(args: string[]): Promise<void> {
-  rejectUnknownOptions(
-    args,
-    new Set(["--source", "--agent", "--scope", "--dry-run", "--force"]),
-  );
+async function runRecord(argv: string[], asJson: boolean): Promise<void> {
+  rejectUnknownOptions(argv, new Set(["--catalog", "--entry-json", "--json"]));
 
-  const name = firstPositional(args);
-  if (name === undefined) {
+  const entryJson = readOption(argv, "--entry-json");
+  if (entryJson === undefined) {
     throw new Error(
-      "Usage: agent-skills update <name> [--source <local-source>] [--agent <claude-code|codex>] [--scope <global|project>] [--dry-run] [--force]",
+      "Usage: agent-skills record --entry-json '<catalog-entry-object>' [--catalog <path>] [--json]",
     );
   }
 
-  const source = readOption(args, "--source");
-  const agent = readOption(args, "--agent");
-  const scope = readOption(args, "--scope");
-  const message = await updateLocalSkill({
-    name,
-    projectDirectory: process.cwd(),
-    ...(source === undefined ? {} : { source }),
-    ...(agent === undefined ? {} : { agent: parseSupportedAgent(agent) }),
-    ...(scope === undefined ? {} : { scope: parseSupportedScope(scope) }),
-    dryRun: args.includes("--dry-run"),
-    force: args.includes("--force"),
-  });
-  process.stdout.write(`${message}\n`);
-}
+  const catalogPath = readOption(argv, "--catalog") ?? defaultCatalogPath();
+  const catalog = await readCatalog(catalogPath);
 
-async function runRemove(args: string[]): Promise<void> {
-  rejectUnknownOptions(
-    args,
-    new Set(["--agent", "--scope", "--dry-run", "--force"]),
-  );
-
-  const name = firstPositional(args);
-  if (name === undefined) {
-    throw new Error(
-      "Usage: agent-skills remove <name> [--agent <claude-code|codex>] [--scope <global|project>] [--dry-run] [--force]",
-    );
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(entryJson);
+  } catch {
+    throw new Error("Invalid --entry-json: must be valid JSON.");
   }
 
-  const agent = readOption(args, "--agent");
-  const scope = readOption(args, "--scope");
-  const message = await removeLocalSkill({
-    name,
-    projectDirectory: process.cwd(),
-    ...(agent === undefined ? {} : { agent: parseSupportedAgent(agent) }),
-    ...(scope === undefined ? {} : { scope: parseSupportedScope(scope) }),
-    dryRun: args.includes("--dry-run"),
-    force: args.includes("--force"),
+  const written = await recordCatalogEntry(catalog, parsed);
+  emitResult({
+    json: asJson,
+    text: `Recorded ${written.kind} entry "${written.name}" in catalog`,
+    payload: {
+      ok: true,
+      kind: written.kind,
+      name: written.name,
+      capabilityKind: written.capabilityKind,
+    },
   });
-  process.stdout.write(`${message}\n`);
 }
 
-function rejectUnknownOptions(args: string[], allowed: Set<string>): void {
-  const unknownOption = args.find(
+function rejectUnknownOptions(argv: string[], allowed: Set<string>): void {
+  const unknownOption = argv.find(
     (argument) => argument.startsWith("--") && !allowed.has(argument),
   );
-
   if (unknownOption !== undefined) {
     throw new Error(`Unknown option "${unknownOption}".`);
   }
 }
 
-function readOption(args: string[], flag: string): string | undefined {
-  const index = args.indexOf(flag);
+function readOption(argv: string[], flag: string): string | undefined {
+  const index = argv.indexOf(flag);
   if (index === -1) {
     return undefined;
   }
-
-  return args[index + 1];
+  return argv[index + 1];
 }
 
-function firstPositional(args: string[]): string | undefined {
+function firstPositional(argv: string[]): string | undefined {
   const flagsWithValues = new Set([
     "--agent",
     "--scope",
     "--catalog",
-    "--source",
+    "--entry-json",
   ]);
 
-  for (let index = 0; index < args.length; index += 1) {
-    const argument = args[index];
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
     if (argument === undefined) {
       continue;
     }
-
     if (argument.startsWith("--")) {
       if (flagsWithValues.has(argument)) {
         index += 1;
       }
       continue;
     }
-
     return argument;
   }
-
   return undefined;
 }
 

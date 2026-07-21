@@ -4,6 +4,23 @@ All notable changes to the `@mournerliao/agent-skills` CLI are documented here.
 
 Skill behavior changes are tracked in each skill's own `CHANGELOG.md` under `skills/`. See [Versioning](docs/versioning.md).
 
+## 0.2.0 — 2026-07-21
+
+### Changed
+
+- Repositioned as a **personal capability library**: catalog is the sync set; CLI parity for humans and agents (`--json`).
+- **Removed** per-machine `agent-skills.lock.json` managed installs. Install/update/remove no longer persist an install inventory.
+- `list` always lists the catalog (sync set), not local lock state.
+- Catalog entry kinds: `maintained`, `delegated` (install recipes), `link-only` (legacy `catalog-only` still accepted when reading).
+- Primary install command is `install` (`add` remains an alias). Added `record --entry-json` to upsert catalog entries without installing.
+- Delegated installs embed and run upstream argv recipes; `--dry-run` prints them; non-interactive runs require `--accept-permissions`.
+
+### Added
+
+- Maintained skill `commit`.
+- Delegated catalog entries: `mattpocock-skills`, `impeccable`.
+- ADR: personal capability library with delegated recipes.
+
 ## 0.1.0 — 2026-07-20
 
 ### Added

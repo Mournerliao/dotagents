@@ -5,7 +5,7 @@ description: Helps users discover skills curated by this repository when they as
 
 # Find Skills (Lite)
 
-This maintained fork helps agents discover skills through this repository's curated catalog.
+Discover capabilities through this repository's curated catalog (the sync set).
 
 ## When to use
 
@@ -13,15 +13,16 @@ Use this skill when the user:
 
 - Asks "how do I do X" where X might already have a curated skill
 - Says "find a skill for X" or "is there a skill for X"
-- Wants to browse what this repository maintains versus what it only recommends
+- Wants to browse maintained vs delegated vs link-only entries
 
 ## How to help
 
-1. List curated entries with `agent-skills list --catalog`.
-2. Prefer `maintained` entries when the user wants an installable skill from this repository.
-3. For `catalog-only` entries, show the upstream URL and explain that this repository does not copy or install that source by default.
-4. Install only maintained skills through `agent-skills add`, never by silently vendoring a catalog-only upstream.
+1. List the sync set: `agent-skills list` or `agent-skills list --json`.
+2. Prefer `maintained` when the user wants a skill hosted in this library.
+3. For `delegated`, show the upstream URL and install with `agent-skills install <name> --dry-run` first, then `--accept-permissions` when they confirm.
+4. For `link-only`, show the upstream URL only — do not pretend this CLI can install it until it is recorded as delegated or maintained.
+5. To add something new to the library without installing: `agent-skills record --entry-json '...'`.
 
 ## Trust boundary
 
-Catalog-only recommendations remain upstream links. This skill intentionally omits third-party marketplace install commands so discovery stays inside the repository's review boundary.
+Delegated recipes run upstream installers. Link-only entries remain links. This skill stays inside this library's review boundary and does not invent marketplace install commands beyond the catalog recipes.

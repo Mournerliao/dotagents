@@ -249,7 +249,7 @@ test("rejects a catalog-only entry missing author license or recommendation", as
   assert.equal(result.status, 1);
   assert.match(
     result.stderr,
-    /Invalid catalog-only entry: "author", "license", and "recommendation" are required\./,
+    /Invalid link-only catalog entry: "author" and "license" are required\./,
   );
 });
 
@@ -283,7 +283,7 @@ test("rejects a catalog-only entry with a malformed upstream URL", async () => {
   assert.equal(result.status, 1);
   assert.match(
     result.stderr,
-    /Invalid catalog-only entry: "upstream" must be an https URL\./,
+    /Invalid link-only catalog entry: "upstream" must be an https URL\./,
   );
 });
 
