@@ -4,6 +4,17 @@ All notable changes to the `@mournerliao/agent-skills` CLI are documented here.
 
 Skill behavior changes are tracked in each skill's own `CHANGELOG.md` under `skills/`. See [Versioning](docs/versioning.md).
 
+## 0.2.1 — 2026-07-23
+
+### Changed
+
+- Reformatted human-readable `list` output into labeled, wrapped entry blocks; `--json` remains unchanged.
+
+### Fixed
+
+- Check sensitive-capability permission acceptance before probing maintained-skill dependencies.
+- Use the platform-native dependency locator on Windows and make package tests independent of inherited npm prefixes.
+
 ## 0.2.0 — 2026-07-21
 
 ### Changed

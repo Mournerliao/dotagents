@@ -19,10 +19,19 @@ function runCli(args, options = {}) {
 test("list shows the sync set catalog by default", () => {
   const result = runCli(["list", "--catalog", join(repositoryRoot, "catalog", "catalog.json")]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /commit\tskill\t1\.0\.0\tmaintained/);
-  assert.match(result.stdout, /mattpocock-skills\tskill\thttps:\/\/github\.com\/mattpocock\/skills\tdelegated/);
-  assert.match(result.stdout, /impeccable\tskill\thttps:\/\/github\.com\/pbakaus\/impeccable\tdelegated/);
-  assert.match(result.stdout, /find-skills\tskill\t.*\tlink-only/);
+  assert.match(result.stdout, /^Catalog \(\d+ entries\)$/m);
+  assert.match(result.stdout, /^commit$/m);
+  assert.match(result.stdout, /^  Type: skill \| Status: maintained \| Version: 1\.0\.0$/m);
+  assert.match(result.stdout, /^mattpocock-skills$/m);
+  assert.match(result.stdout, /^  Type: skill \| Status: delegated$/m);
+  assert.match(result.stdout, /^  Source: https:\/\/github\.com\/mattpocock\/skills$/m);
+  assert.match(result.stdout, /^find-skills$/m);
+  assert.match(result.stdout, /^  Type: skill \| Status: link-only$/m);
+  assert.doesNotMatch(result.stdout, /\t/);
+  assert.ok(
+    result.stdout.split("\n").every((line) => line.length <= 100),
+    result.stdout,
+  );
 });
 
 test("list --json returns machine-readable catalog", () => {

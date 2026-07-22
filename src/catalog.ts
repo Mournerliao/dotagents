@@ -115,29 +115,68 @@ export function findCatalogEntry(
 }
 
 export function formatCatalogListing(catalog: Catalog): string {
-  return `${catalog.entries.map((entry) => formatListingLine(entry)).join("\n")}\n`;
+  const entries = catalog.entries.map((entry) => formatListingLine(entry));
+  return `Catalog (${catalog.entries.length} entries)\n\n${entries.join("\n\n")}\n`;
 }
 
 export function formatListingLine(entry: CatalogEntry): string {
-  if (entry.kind === "maintained") {
-    return [
-      entry.name,
-      entry.capabilityKind,
-      entry.version,
-      entry.kind,
-      entry.compatibility.join(","),
-      entry.description,
-    ].join("\t");
+  const details = [
+    `  Type: ${entry.capabilityKind} | Status: ${entry.kind}${
+      entry.kind === "maintained" ? ` | Version: ${entry.version}` : ""
+    }`,
+    wrapListingField("Agents", entry.compatibility.join(", ")),
+  ];
+
+  if (entry.kind !== "maintained") {
+    details.push(wrapListingField("Source", entry.upstream));
   }
 
-  return [
-    entry.name,
-    entry.capabilityKind,
-    entry.upstream,
-    entry.kind,
-    entry.compatibility.join(","),
-    entry.description,
-  ].join("\t");
+  details.push(wrapListingField("Description", entry.description));
+  return [entry.name, ...details].join("\n");
+}
+
+const LISTING_WIDTH = 100;
+
+function wrapListingField(label: string, value: string): string {
+  const prefix = `  ${label}: `;
+  const continuation = " ".repeat(prefix.length);
+  const availableWidth = LISTING_WIDTH - prefix.length;
+  const chunks = wrapText(value, availableWidth);
+  return chunks
+    .map((chunk, index) => `${index === 0 ? prefix : continuation}${chunk}`)
+    .join("\n");
+}
+
+function wrapText(value: string, width: number): string[] {
+  const chunks: string[] = [];
+  let line = "";
+
+  for (const word of value.trim().split(/\s+/)) {
+    const parts = splitLongWord(word, width);
+    for (const part of parts) {
+      if (line === "") {
+        line = part;
+      } else if (line.length + 1 + part.length <= width) {
+        line += ` ${part}`;
+      } else {
+        chunks.push(line);
+        line = part;
+      }
+    }
+  }
+
+  if (line !== "") {
+    chunks.push(line);
+  }
+  return chunks;
+}
+
+function splitLongWord(word: string, width: number): string[] {
+  const parts: string[] = [];
+  for (let index = 0; index < word.length; index += width) {
+    parts.push(word.slice(index, index + width));
+  }
+  return parts;
 }
 
 export function catalogToJson(catalog: Catalog): unknown {

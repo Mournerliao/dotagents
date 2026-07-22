@@ -22,6 +22,13 @@ test("script-bearing maintained skill requires --accept-permissions", async () =
     const skillsDir = join(dir, "skills", "scripted-example");
     await cp(scriptedFixture, skillsDir, { recursive: true });
     await chmod(join(skillsDir, "scripts", "hello.sh"), 0o755);
+    const skillMetadataPath = join(skillsDir, "skill.json");
+    const skillMetadata = JSON.parse(await readFile(skillMetadataPath, "utf8"));
+    skillMetadata.dependencies = ["node"];
+    await writeFile(
+      skillMetadataPath,
+      `${JSON.stringify(skillMetadata, null, 2)}\n`,
+    );
 
     const catalogPath = join(dir, "catalog.json");
     await writeFile(

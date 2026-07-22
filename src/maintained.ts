@@ -55,6 +55,7 @@ export async function installMaintainedSkill(
   }
 
   await assertPermissionsAccepted(prepared.skill, options.acceptPermissions);
+  assertDependenciesAvailable(prepared.skill.dependencies);
 
   for (const file of prepared.plannedFiles) {
     const destination = join(prepared.installRoot, file.ownedPath);
@@ -81,6 +82,7 @@ export async function updateMaintainedSkill(
   }
 
   await assertPermissionsAccepted(prepared.skill, options.acceptPermissions);
+  assertDependenciesAvailable(prepared.skill.dependencies);
 
   for (const file of prepared.plannedFiles) {
     const destination = join(prepared.installRoot, file.ownedPath);
@@ -134,8 +136,6 @@ async function prepareMaintained(
     );
   }
 
-  assertDependenciesAvailable(skill.dependencies);
-
   const adapter = adapters[options.agent];
   const installRoot = resolveInstallRoot(options);
   const plannedFiles = adapter.planInstallation(skill, sourceDirectory);
@@ -186,8 +186,9 @@ function formatDryRun(
 }
 
 function assertDependenciesAvailable(dependencies: string[]): void {
+  const locator = process.platform === "win32" ? "where.exe" : "which";
   for (const dependency of dependencies) {
-    const result = spawnSync("which", [dependency], { encoding: "utf8" });
+    const result = spawnSync(locator, [dependency], { encoding: "utf8" });
     if (result.status !== 0) {
       throw new Error(`Missing required dependency: ${dependency}.`);
     }

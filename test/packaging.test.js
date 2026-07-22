@@ -8,23 +8,42 @@ import test from "node:test";
 
 const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
+function runNpm(args, options) {
+  if (process.env.npm_execpath !== undefined) {
+    return spawnSync(process.execPath, [process.env.npm_execpath, ...args], options);
+  }
+  return spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", args, {
+    ...options,
+    shell: process.platform === "win32",
+  });
+}
+
 test("npm pack includes catalog skills and ADR, and list works from the package", async () => {
   await access(join(repositoryRoot, "dist", "cli.js"));
+  const packageMetadata = JSON.parse(
+    await readFile(join(repositoryRoot, "package.json"), "utf8"),
+  );
 
   const packDir = await mkdtemp(join(tmpdir(), "agent-skills-pack-"));
   const installDir = await mkdtemp(join(tmpdir(), "agent-skills-install-"));
   const project = await mkdtemp(join(tmpdir(), "agent-skills-project-"));
 
   try {
-    const pack = spawnSync(
-      "npm",
+    const npmEnv = {
+      ...process.env,
+      npm_config_cache: join(packDir, "npm-cache"),
+    };
+    const pack = runNpm(
       ["pack", "--ignore-scripts", "--pack-destination", packDir],
-      { cwd: repositoryRoot, encoding: "utf8" },
+      { cwd: repositoryRoot, encoding: "utf8", env: npmEnv },
     );
     assert.equal(pack.status, 0, pack.stderr || pack.stdout);
 
     const tarballName = pack.stdout.trim().split(/\r?\n/).at(-1);
-    assert.match(tarballName ?? "", /^mournerliao-agent-skills-0\.2\.0\.tgz$/);
+    assert.equal(
+      tarballName,
+      `mournerliao-agent-skills-${packageMetadata.version}.tgz`,
+    );
 
     const listing = spawnSync("tar", ["-tzf", join(packDir, tarballName)], {
       encoding: "utf8",
@@ -33,10 +52,15 @@ test("npm pack includes catalog skills and ADR, and list works from the package"
     assert.match(listing.stdout, /package\/skills\/commit\/skill\.json/);
     assert.match(listing.stdout, /package\/docs\/adr\/0001-personal-capability-library\.md/);
 
-    const install = spawnSync(
-      "npm",
-      ["install", "--ignore-scripts", join(packDir, tarballName)],
-      { cwd: installDir, encoding: "utf8" },
+    const install = runNpm(
+      [
+        "install",
+        "--ignore-scripts",
+        "--prefix",
+        installDir,
+        join(packDir, tarballName),
+      ],
+      { cwd: installDir, encoding: "utf8", env: npmEnv },
     );
     assert.equal(install.status, 0, install.stderr || install.stdout);
 
@@ -48,6 +72,13 @@ test("npm pack includes catalog skills and ADR, and list works from the package"
       "dist",
       "cli.js",
     );
+    try {
+      await access(packagedCli);
+    } catch {
+      assert.fail(
+        `Packaged CLI was not installed.\nstdout:\n${install.stdout}\nstderr:\n${install.stderr}`,
+      );
+    }
     const list = spawnSync(process.execPath, [packagedCli, "list", "--json"], {
       cwd: project,
       encoding: "utf8",
