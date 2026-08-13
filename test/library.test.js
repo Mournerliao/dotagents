@@ -21,7 +21,7 @@ test("list shows the sync set catalog by default", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^Catalog \(\d+ entries\)$/m);
   assert.match(result.stdout, /^commit$/m);
-  assert.match(result.stdout, /^  Type: skill \| Status: maintained \| Version: 1\.0\.0$/m);
+  assert.match(result.stdout, /^  Type: skill \| Status: maintained \| Version: 1\.0\.1$/m);
   assert.match(result.stdout, /^mattpocock-skills$/m);
   assert.match(result.stdout, /^  Type: skill \| Status: delegated$/m);
   assert.match(result.stdout, /^  Source: https:\/\/github\.com\/mattpocock\/skills$/m);
@@ -94,6 +94,61 @@ test("dry-run delegated install prints the upstream recipe without executing", (
   assert.match(result.stdout, /skills@latest/);
   assert.match(result.stdout, /mattpocock\/skills/);
   assert.match(result.stdout, /Dry run: delegated install mattpocock-skills/);
+  assert.match(result.stdout, /-a claude-code/);
+  assert.match(result.stdout, /-a codex/);
+  assert.doesNotMatch(result.stdout, /-a cursor/);
+});
+
+test("dry-run impeccable recipe does not add a Cursor provider copy", () => {
+  const result = runCli([
+    "install",
+    "impeccable",
+    "--dry-run",
+    "--catalog",
+    join(repositoryRoot, "catalog", "catalog.json"),
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /--providers=claude,codex/);
+  assert.doesNotMatch(result.stdout, /--providers=\S*cursor/);
+});
+
+test("delegated recipes do not copy into Cursor's skill directory", async () => {
+  const catalog = JSON.parse(
+    await readFile(join(repositoryRoot, "catalog", "catalog.json"), "utf8"),
+  );
+
+  for (const entry of catalog.entries) {
+    if (entry.kind !== "delegated") {
+      continue;
+    }
+
+    for (const argv of [
+      entry.recipe.install,
+      entry.recipe.update,
+      entry.recipe.remove,
+    ]) {
+      if (argv === undefined) {
+        continue;
+      }
+
+      const command = argv.join(" ");
+      assert.doesNotMatch(
+        command,
+        /(^|\s)-a cursor(\s|$)/,
+        `${entry.name} must not pass -a cursor`,
+      );
+      assert.doesNotMatch(
+        command,
+        /--providers=\S*cursor/,
+        `${entry.name} must not include a Cursor provider`,
+      );
+      assert.doesNotMatch(
+        command,
+        /\.cursor\/skills/,
+        `${entry.name} must not write ~/.cursor/skills`,
+      );
+    }
+  }
 });
 
 test("delegated install without --accept-permissions fails", () => {

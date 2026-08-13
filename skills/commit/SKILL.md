@@ -183,13 +183,13 @@ docs: fix typo in API authentication section
 
 ## Distribution
 
-This skill is maintained in `@mournerliao/agent-skills`. Install or update with the CLI (Codex / Claude Code):
+This skill is the published snapshot in `@mournerliao/agent-skills`. Authoring may happen in a personal repo and get copied here on release — install from this package, not from a second checkout.
 
 ```bash
-npx @mournerliao/agent-skills add
-# or, after a global install:
-agent-skills add
-agent-skills update commit
+npx @mournerliao/agent-skills install commit --agent codex --scope global
+# or, after a global CLI install:
+agent-skills install commit --agent codex --scope global
+agent-skills update commit --agent codex --scope global
 ```
 
-Cursor is not yet a supported install target of this CLI; copy `skills/commit` into the Cursor skills directory manually if needed.
+`--agent codex --scope global` writes `~/.agents/skills/commit`. Cursor reads that directory. Do not copy this skill into `~/.cursor/skills`. Claude Code uses `--agent claude-code` (`.claude/skills`).

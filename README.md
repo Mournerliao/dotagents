@@ -24,7 +24,7 @@ Requires Node.js 20+.
 | Delegated | Upstream install recipe (runs `npx skills`, `npx impeccable`, …) |
 | Link-only | Upstream link without an install recipe |
 
-This CLI does **not** keep a per-machine lock of what you installed. Pick agent and scope when you install.
+This CLI does **not** keep a per-machine lock of what you installed. Pick agent and scope when you install; discover current installs from the install root (`~/.agents/skills` globally).
 
 ## Commands
 
@@ -63,9 +63,11 @@ agent-skills record --entry-json '{"kind":"delegated","name":"…", ...}'
 
 | Agent | Status |
 |-------|--------|
-| Codex | Supported |
-| Claude Code | Supported |
-| Cursor | Future target for maintained adapters; delegated recipes may still target Cursor via upstream CLIs |
+| Codex | Supported (`--agent codex` writes `.agents/skills`) |
+| Claude Code | Supported (`--agent claude-code` writes `.claude/skills`) |
+| Cursor | Consumes the Codex/agents root (`~/.agents/skills` globally). Not a copy target: do not install into `~/.cursor/skills`. |
+
+`compatibility` lists which agents can **use** an entry after it is installed. It is not a list of directories to copy into. Global install root is `~/.agents/skills`; operators discover installs from that tree. This CLI does not add a Cursor copy adapter, and delegated recipes must not pass `-a cursor` or a Cursor provider.
 
 ## Catalog trust boundary
 
@@ -81,7 +83,7 @@ Prefer **delegated** when a reliable upstream installer exists. Repository licen
 
 CLI releases and skill versions are independent. See [docs/versioning.md](docs/versioning.md) and [CHANGELOG.md](CHANGELOG.md).
 
-Domain language: [CONTEXT.md](CONTEXT.md). Architecture decision: [docs/adr/0001-personal-capability-library.md](docs/adr/0001-personal-capability-library.md).
+Domain language: [CONTEXT.md](CONTEXT.md). Architecture decisions: [0001](docs/adr/0001-personal-capability-library.md), [0002](docs/adr/0002-shared-agents-install-root.md).
 
 ## Contributing
 

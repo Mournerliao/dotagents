@@ -4,6 +4,18 @@ All notable changes to the `@mournerliao/agent-skills` CLI are documented here.
 
 Skill behavior changes are tracked in each skill's own `CHANGELOG.md` under `skills/`. See [Versioning](docs/versioning.md).
 
+## Unreleased
+
+### Changed
+
+- Delegated recipes no longer copy into Cursor (`-a cursor` / Cursor providers removed). Cursor consumes `~/.agents/skills`.
+- Documented the shared install root, `compatibility` as consume-not-copy, and that personal git-symlink layouts are out of band.
+- `commit` 1.0.1: drop the "copy into Cursor skills" instruction; this package is the published snapshot.
+
+### Added
+
+- ADR 0002: shared agents install root.
+
 ## 0.2.1 — 2026-07-23
 
 ### Changed

@@ -24,6 +24,8 @@ repository source.
 - Clear usefulness for the maintainer's sync set (and compatible agents).
 - Honest inclusion mode: `maintained` vs `delegated` vs `link-only`.
 - Prefer **delegated** when a reliable upstream installer exists.
+- Delegated recipes must not copy into `~/.cursor/skills` (`-a cursor`, `--providers=...cursor`, or an explicit Cursor skills path). Cursor consumes `~/.agents/skills`.
+- Do not add an inclusion mode for symlinking another git checkout; that layout stays personal and out of band.
 - Compatible license and attribution that can be preserved.
 - Declared `capabilityKind` (`skill` now; `mcp` reserved).
 - Provenance that makes ownership and divergence reviewable for maintained skills.

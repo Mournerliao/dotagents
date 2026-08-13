@@ -32,10 +32,11 @@ agent-skills record --entry-json '{"kind":"delegated", ...}'
 agent-skills validate --catalog
 ```
 
-- **maintained**：包内技能，按 `--agent` / `--scope` 安装。
-- **delegated**：执行上游安装配方（如 `npx skills` / `npx impeccable`）；非交互需 `--accept-permissions`。
+- **maintained**：包内技能，按 `--agent` / `--scope` 安装。`--agent codex` 写到 `.agents/skills`；Cursor 读全局的 `~/.agents/skills`，不要再拷一份到 `~/.cursor/skills`。
+- **delegated**：执行上游安装配方（如 `npx skills` / `npx impeccable`）；非交互需 `--accept-permissions`。配方只装进 Claude Code 和 Codex/agents，不带 Cursor 拷贝目标。
 - **link-only**：仅链接，不能装。
-- **不写**本机 lock；装没装过由环境判断。
+- **不写**本机 lock；装没装过看安装根（全局即 `~/.agents/skills`）。
 - `record` 只改 catalog，不安装。
+- `compatibility` 表示装好之后谁能用，不是要往几个目录各拷一份。
 
 领域词汇见根目录 [CONTEXT.md](../../CONTEXT.md)。

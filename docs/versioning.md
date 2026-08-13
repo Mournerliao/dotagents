@@ -12,7 +12,7 @@ CLI releases and skill releases are versioned independently.
 
 - Each maintained skill declares its own semantic `version` in `skill.json`.
 - Skill behavior changes are recorded in `skills/<name>/CHANGELOG.md`.
-- Installations record the resolved skill version in `agent-skills.lock.json`.
+- There is no per-machine lockfile. Catalog and `skill.json` versions describe the sync set; what a machine has installed is discovered from the install root (`~/.agents/skills` globally).
 
 ## Update policy
 

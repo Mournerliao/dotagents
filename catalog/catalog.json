@@ -31,7 +31,7 @@
       "kind": "maintained",
       "capabilityKind": "skill",
       "name": "commit",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "compatibility": ["codex", "claude-code"],
       "description": "Write git commit messages that follow the current repository's conventions, with an English subject and Chinese body.",
       "path": "../skills/commit"
@@ -44,6 +44,7 @@
       "author": "Matt Pocock",
       "license": "MIT",
       "compatibility": ["codex", "claude-code", "cursor"],
+      "compatibilityNotes": "Cursor consumes ~/.agents/skills (Codex global layout). The recipe installs into Claude Code and Codex/agents roots only — not ~/.cursor/skills. --skill * is upstream's published set; unpublished or personal checkout skills stay out of band.",
       "description": "Matt Pocock engineering and productivity skills (grill, tdd, triage, and more).",
       "recipe": {
         "install": [
@@ -57,8 +58,6 @@
           "claude-code",
           "-a",
           "codex",
-          "-a",
-          "cursor",
           "--skill",
           "*",
           "-y"
@@ -81,6 +80,7 @@
       "author": "Paul Bakaus",
       "license": "Apache-2.0",
       "compatibility": ["codex", "claude-code", "cursor"],
+      "compatibilityNotes": "Cursor consumes ~/.agents/skills. Providers are Claude and Codex; do not add a Cursor copy.",
       "description": "Design guidance skill and commands for AI coding agents.",
       "recipe": {
         "install": [
@@ -89,7 +89,7 @@
           "impeccable",
           "install",
           "-y",
-          "--providers=claude,codex,cursor",
+          "--providers=claude,codex",
           "--scope=global"
         ],
         "update": ["npx", "--yes", "impeccable", "update", "-y"]
