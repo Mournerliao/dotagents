@@ -11,6 +11,7 @@ Skill behavior changes are tracked in each skill's own `CHANGELOG.md` under `ski
 - Delegated recipes no longer copy into Cursor (`-a cursor` / Cursor providers removed). Cursor consumes `~/.agents/skills`.
 - Documented the shared install root, `compatibility` as consume-not-copy, and that personal git-symlink layouts are out of band.
 - `commit` 1.0.1: drop the "copy into Cursor skills" instruction; this package is the published snapshot.
+- Replaced maintained skill `find-skills-lite` with `agent-skills` (CLI operate + catalog discovery).
 
 ### Added
 

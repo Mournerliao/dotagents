@@ -22,6 +22,9 @@ test("list shows the sync set catalog by default", () => {
   assert.match(result.stdout, /^Catalog \(\d+ entries\)$/m);
   assert.match(result.stdout, /^commit$/m);
   assert.match(result.stdout, /^  Type: skill \| Status: maintained \| Version: 1\.0\.1$/m);
+  assert.match(result.stdout, /^agent-skills$/m);
+  assert.match(result.stdout, /^  Type: skill \| Status: maintained \| Version: 1\.0\.0$/m);
+  assert.doesNotMatch(result.stdout, /find-skills-lite/);
   assert.match(result.stdout, /^mattpocock-skills$/m);
   assert.match(result.stdout, /^  Type: skill \| Status: delegated$/m);
   assert.match(result.stdout, /^  Source: https:\/\/github\.com\/mattpocock\/skills$/m);

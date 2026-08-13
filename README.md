@@ -46,6 +46,9 @@ Common flags: `--agent`, `--scope`, `--catalog`, `--dry-run`, `--accept-permissi
 agent-skills list
 agent-skills list --json
 
+# Install this CLI's operator skill globally (Cursor reads ~/.agents/skills)
+agent-skills install agent-skills --agent codex --scope global
+
 # Install a maintained skill for Codex in the current project
 agent-skills install commit --agent codex --scope project
 

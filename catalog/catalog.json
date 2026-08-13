@@ -21,11 +21,11 @@
     {
       "kind": "maintained",
       "capabilityKind": "skill",
-      "name": "find-skills-lite",
+      "name": "agent-skills",
       "version": "1.0.0",
       "compatibility": ["codex", "claude-code"],
-      "description": "Discover skills through this repository's catalog without invoking third-party install CLIs.",
-      "path": "../skills/find-skills-lite"
+      "description": "Operate the @mournerliao/agent-skills CLI to list, install, update, remove, or record the personal capability catalog.",
+      "path": "../skills/agent-skills"
     },
     {
       "kind": "maintained",
@@ -103,8 +103,8 @@
       "author": "Vercel Labs",
       "license": "unknown",
       "compatibility": ["codex", "claude-code"],
-      "compatibilityNotes": "Upstream targets the open skills ecosystem; prefer find-skills-lite or delegated marketplace installs when staying inside this library.",
-      "recommendation": "Use when you want the public skills marketplace discovery skill itself; prefer find-skills-lite for this repository's catalog, or natively use npx skills.",
+      "compatibilityNotes": "Upstream targets the open skills ecosystem; prefer the maintained agent-skills skill or delegated catalog recipes when staying inside this library.",
+      "recommendation": "Use when you want the public skills marketplace discovery skill itself; prefer agent-skills for this repository's catalog, or natively use npx skills.",
       "description": "Discover and install agent skills from public registries."
     }
   ]

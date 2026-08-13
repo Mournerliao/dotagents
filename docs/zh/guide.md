@@ -21,6 +21,7 @@ agent-skills list
 agent-skills list
 agent-skills list --json
 
+agent-skills install agent-skills --agent codex --scope global
 agent-skills install commit --agent codex --scope project
 agent-skills install mattpocock-skills --dry-run
 agent-skills install impeccable --accept-permissions

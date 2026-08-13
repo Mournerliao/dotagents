@@ -25,7 +25,7 @@
     "prepack": "npm run clean && npm run build",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test test/**/*.test.js",
-    "validate:canonical": "npm run build && node dist/cli.js validate skills/example && node dist/cli.js validate skills/summarize && node dist/cli.js validate skills/find-skills-lite && node dist/cli.js validate skills/commit",
+    "validate:canonical": "npm run build && node dist/cli.js validate skills/example && node dist/cli.js validate skills/summarize && node dist/cli.js validate skills/agent-skills && node dist/cli.js validate skills/commit",
     "validate:provenance": "npm run build && node dist/cli.js validate --catalog catalog/catalog.json",
     "ci": "npm run typecheck && npm test && npm run validate:provenance"
   },
