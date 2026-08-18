@@ -9,7 +9,7 @@
   },
   "files": [
     "dist",
-    "catalog",
+    "catalog.json",
     "skills",
     "README.md",
     "CHANGELOG.md"
@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test test/**/*.test.js",
     "validate:canonical": "npm run build && node dist/cli.js validate skills/example && node dist/cli.js validate skills/summarize && node dist/cli.js validate skills/agent-skills && node dist/cli.js validate skills/commit",
-    "validate:provenance": "npm run build && node dist/cli.js validate --catalog catalog/catalog.json",
+    "validate:provenance": "npm run build && node dist/cli.js validate --catalog catalog.json",
     "ci": "npm run typecheck && npm test && npm run validate:provenance"
   },
   "repository": {

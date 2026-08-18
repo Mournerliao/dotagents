@@ -23,3 +23,17 @@ export function createPlannedFiles(
     ownedPath: posix.join(...skillRootSegments, skill.name, file),
   }));
 }
+
+export const claudeCodeAdapter: AgentAdapter = {
+  name: "claude-code",
+  planInstallation(skill, sourceDirectory) {
+    return createPlannedFiles(skill, sourceDirectory, [".claude", "skills"]);
+  },
+};
+
+export const codexAdapter: AgentAdapter = {
+  name: "codex",
+  planInstallation(skill, sourceDirectory) {
+    return createPlannedFiles(skill, sourceDirectory, [".agents", "skills"]);
+  },
+};

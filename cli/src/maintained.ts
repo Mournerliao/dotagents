@@ -8,15 +8,18 @@ import {
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
-import type { AgentAdapter, PlannedFile } from "./adapter.js";
+import {
+  claudeCodeAdapter,
+  codexAdapter,
+  type AgentAdapter,
+  type PlannedFile,
+} from "./adapter.js";
 import {
   formatPermissionReview,
   hasSensitiveCapabilities,
   readCanonicalSkill,
   type CanonicalSkill,
 } from "./canonical-skill.js";
-import { claudeCodeAdapter } from "./claude-code-adapter.js";
-import { codexAdapter } from "./codex-adapter.js";
 import type { SupportedAgent, SupportedScope } from "./supported-options.js";
 
 export interface MaintainedLifecycleOptions {

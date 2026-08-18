@@ -7,11 +7,10 @@ import {
   catalogToJson,
   formatCatalogListing,
   readCatalog,
+  recordCatalogEntry,
 } from "./catalog.js";
 import { readCanonicalSkill } from "./canonical-skill.js";
 import { getPermissionReview, runLifecycle } from "./lifecycle.js";
-import { emitResult } from "./output.js";
-import { recordCatalogEntry } from "./record.js";
 import {
   parseSupportedAgent,
   parseSupportedScope,
@@ -262,11 +261,20 @@ function firstPositional(argv: string[]): string | undefined {
   return undefined;
 }
 
-function defaultCatalogPath(): string {
-  return join(
-    dirname(fileURLToPath(import.meta.url)),
-    "..",
-    "catalog",
-    "catalog.json",
+function emitResult(options: {
+  json: boolean;
+  payload: unknown;
+  text: string;
+}): void {
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(options.payload, null, 2)}\n`);
+    return;
+  }
+  process.stdout.write(
+    options.text.endsWith("\n") ? options.text : `${options.text}\n`,
   );
+}
+
+function defaultCatalogPath(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "catalog.json");
 }

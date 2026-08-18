@@ -1,7 +1,5 @@
 import { access, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-
-import { toCatalogRelativePath } from "./paths.js";
+import { dirname, join, relative, resolve } from "node:path";
 
 export type CapabilityKind = "skill" | "mcp";
 export type InclusionKind = "maintained" | "delegated" | "link-only";
@@ -94,6 +92,21 @@ export async function writeCatalog(catalog: Catalog): Promise<void> {
     catalog.catalogPath,
     `${JSON.stringify(serializable, null, 2)}\n`,
   );
+}
+
+export async function recordCatalogEntry(
+  catalog: Catalog,
+  rawEntry: unknown,
+): Promise<CatalogEntry> {
+  const entry = await parseCatalogEntry(rawEntry, catalog.rootDirectory);
+  const index = catalog.entries.findIndex((item) => item.name === entry.name);
+  if (index === -1) {
+    catalog.entries.push(entry);
+  } else {
+    catalog.entries[index] = entry;
+  }
+  await writeCatalog(catalog);
+  return entry;
 }
 
 export function findCatalogEntry(
@@ -500,6 +513,14 @@ function isHttpsUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function toCatalogRelativePath(
+  catalogRootDirectory: string,
+  absoluteSkillPath: string,
+): string {
+  const rel = relative(catalogRootDirectory, absoluteSkillPath);
+  return rel.split("\\").join("/");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

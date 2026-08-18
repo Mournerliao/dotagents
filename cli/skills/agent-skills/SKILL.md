@@ -69,10 +69,10 @@ Delegated update/remove run the catalog recipe when one exists.
 
 Record writes a catalog file. It does not install.
 
-To change the published library, point `--catalog` at this repository's `cli/catalog/catalog.json` in a git checkout, then commit. Do not record into an npx cache copy.
+To change the published library, point `--catalog` at this repository's `cli/catalog.json` in a git checkout, then commit. Do not record into an npx cache copy.
 
 ```bash
-npx --yes @mournerliao/agent-skills record --catalog /path/to/dotagents/cli/catalog/catalog.json --entry-json '<catalog-entry-object>'
+npx --yes @mournerliao/agent-skills record --catalog /path/to/dotagents/cli/catalog.json --entry-json '<catalog-entry-object>'
 ```
 
 Done when the CLI reports the entry recorded and the checkout catalog contains it.

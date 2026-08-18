@@ -9,11 +9,13 @@ Skill behavior changes are tracked in each skill's own `CHANGELOG.md` under `cli
 ### Changed
 
 - Moved the CLI into `cli/` of the `dotagents` repository. Package and binary remain `@mournerliao/agent-skills` / `agent-skills`.
+- Catalog lives at `cli/catalog.json` (package root). Maintained entry `path` values are `skills/<name>`.
+- Merged shallow CLI modules into their owners: adapters into `adapter.ts`, record/path helpers into `catalog.ts`, output into `cli.ts`.
 - npm package contents are the CLI, catalog, and maintained skills. Repository docs stay at the repo root and are no longer packed.
 - Delegated recipes no longer copy into Cursor (`-a cursor` / Cursor providers removed). Cursor consumes `~/.agents/skills`.
 - Documented the shared install root, `compatibility` as consume-not-copy, and that personal git-symlink layouts are out of band.
 - `commit` 1.0.2: install from this package; Cursor consumes `~/.agents/skills`.
-- `agent-skills` 1.1.0: catalog path in a git checkout is `cli/catalog/catalog.json`.
+- `agent-skills` 1.1.1: catalog path in a git checkout is `cli/catalog.json`.
 
 ### Added
 

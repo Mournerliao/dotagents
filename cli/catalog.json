@@ -7,7 +7,7 @@
       "version": "1.0.0",
       "compatibility": ["codex", "claude-code"],
       "description": "A minimal canonical skill fixture.",
-      "path": "../skills/example"
+      "path": "skills/example"
     },
     {
       "kind": "maintained",
@@ -16,16 +16,16 @@
       "version": "1.0.0",
       "compatibility": ["codex"],
       "description": "Summarize the current conversation or selection concisely.",
-      "path": "../skills/summarize"
+      "path": "skills/summarize"
     },
     {
       "kind": "maintained",
       "capabilityKind": "skill",
       "name": "agent-skills",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "compatibility": ["codex", "claude-code"],
       "description": "Operate the @mournerliao/agent-skills CLI to list, install, update, remove, or record the personal capability catalog.",
-      "path": "../skills/agent-skills"
+      "path": "skills/agent-skills"
     },
     {
       "kind": "maintained",
@@ -34,7 +34,7 @@
       "version": "1.0.2",
       "compatibility": ["codex", "claude-code"],
       "description": "Write git commit messages that follow the current repository's conventions, with an English subject and Chinese body.",
-      "path": "../skills/commit"
+      "path": "skills/commit"
     },
     {
       "kind": "delegated",

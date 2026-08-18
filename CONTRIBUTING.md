@@ -34,10 +34,10 @@ repository source.
 ## Recording entries
 
 Agents and humans use the same command. From a git checkout, point `--catalog`
-at `cli/catalog/catalog.json`:
+at `cli/catalog.json`:
 
 ```bash
-npx @mournerliao/agent-skills record --catalog cli/catalog/catalog.json --entry-json '<catalog-entry-object>'
+npx @mournerliao/agent-skills record --catalog cli/catalog.json --entry-json '<catalog-entry-object>'
 ```
 
 ## Validation

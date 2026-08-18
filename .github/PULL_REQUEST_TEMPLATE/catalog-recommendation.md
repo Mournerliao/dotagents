@@ -4,7 +4,7 @@
 
 ## Checklist
 
-- [ ] Entry is recorded in `cli/catalog/catalog.json` with `kind: "link-only"`.
+- [ ] Entry is recorded in `cli/catalog.json` with `kind: "link-only"`.
 - [ ] `upstream` is an https URL to the source (no source copied into this repo).
 - [ ] `author`, `license` (or `unknown`), `compatibility`, `recommendation`, and `description` are filled in.
 - [ ] Optional `compatibilityNotes` explain agent limits when needed.

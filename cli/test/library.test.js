@@ -17,13 +17,13 @@ function runCli(args, options = {}) {
 }
 
 test("list shows the sync set catalog by default", () => {
-  const result = runCli(["list", "--catalog", join(repositoryRoot, "catalog", "catalog.json")]);
+  const result = runCli(["list", "--catalog", join(repositoryRoot, "catalog.json")]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^Catalog \(\d+ entries\)$/m);
   assert.match(result.stdout, /^commit$/m);
   assert.match(result.stdout, /^  Type: skill \| Status: maintained \| Version: 1\.0\.2$/m);
   assert.match(result.stdout, /^agent-skills$/m);
-  assert.match(result.stdout, /^  Type: skill \| Status: maintained \| Version: 1\.1\.0$/m);
+  assert.match(result.stdout, /^  Type: skill \| Status: maintained \| Version: 1\.1\.1$/m);
   assert.doesNotMatch(result.stdout, /find-skills-lite/);
   assert.match(result.stdout, /^mattpocock-skills$/m);
   assert.match(result.stdout, /^  Type: skill \| Status: delegated$/m);
@@ -41,7 +41,7 @@ test("list --json returns machine-readable catalog", () => {
   const result = runCli([
     "list",
     "--catalog",
-    join(repositoryRoot, "catalog", "catalog.json"),
+    join(repositoryRoot, "catalog.json"),
     "--json",
   ]);
   assert.equal(result.status, 0, result.stderr);
@@ -65,7 +65,7 @@ test("installs a maintained skill without writing a lockfile", async () => {
         "--scope",
         "project",
         "--catalog",
-        join(repositoryRoot, "catalog", "catalog.json"),
+        join(repositoryRoot, "catalog.json"),
       ],
       { cwd: project },
     );
@@ -90,7 +90,7 @@ test("dry-run delegated install prints the upstream recipe without executing", (
     "mattpocock-skills",
     "--dry-run",
     "--catalog",
-    join(repositoryRoot, "catalog", "catalog.json"),
+    join(repositoryRoot, "catalog.json"),
   ]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Permission review for delegated install: mattpocock-skills/);
@@ -108,7 +108,7 @@ test("dry-run impeccable recipe does not add a Cursor provider copy", () => {
     "impeccable",
     "--dry-run",
     "--catalog",
-    join(repositoryRoot, "catalog", "catalog.json"),
+    join(repositoryRoot, "catalog.json"),
   ]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /--providers=claude,codex/);
@@ -117,7 +117,7 @@ test("dry-run impeccable recipe does not add a Cursor provider copy", () => {
 
 test("delegated recipes do not copy into Cursor's skill directory", async () => {
   const catalog = JSON.parse(
-    await readFile(join(repositoryRoot, "catalog", "catalog.json"), "utf8"),
+    await readFile(join(repositoryRoot, "catalog.json"), "utf8"),
   );
 
   for (const entry of catalog.entries) {
@@ -159,7 +159,7 @@ test("delegated install without --accept-permissions fails", () => {
     "install",
     "impeccable",
     "--catalog",
-    join(repositoryRoot, "catalog", "catalog.json"),
+    join(repositoryRoot, "catalog.json"),
   ]);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Delegated recipes require --accept-permissions/);
@@ -177,7 +177,7 @@ test("update and remove maintained skills by convention path", async () => {
         "--scope",
         "project",
         "--catalog",
-        join(repositoryRoot, "catalog", "catalog.json"),
+        join(repositoryRoot, "catalog.json"),
       ],
       { cwd: project },
     );
@@ -192,7 +192,7 @@ test("update and remove maintained skills by convention path", async () => {
         "--scope",
         "project",
         "--catalog",
-        join(repositoryRoot, "catalog", "catalog.json"),
+        join(repositoryRoot, "catalog.json"),
       ],
       { cwd: project },
     );
@@ -208,7 +208,7 @@ test("update and remove maintained skills by convention path", async () => {
         "--scope",
         "project",
         "--catalog",
-        join(repositoryRoot, "catalog", "catalog.json"),
+        join(repositoryRoot, "catalog.json"),
       ],
       { cwd: project },
     );
@@ -293,7 +293,7 @@ test("link-only entries cannot be installed", () => {
     "--agent",
     "codex",
     "--catalog",
-    join(repositoryRoot, "catalog", "catalog.json"),
+    join(repositoryRoot, "catalog.json"),
   ]);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /link-only/);

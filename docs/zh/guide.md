@@ -33,7 +33,7 @@ npx @mournerliao/agent-skills record --entry-json '{"kind":"delegated", ...}'
 npx @mournerliao/agent-skills validate --catalog
 ```
 
-从 git checkout 改已发布 catalog 时，把 `--catalog` 指到 `cli/catalog/catalog.json`。
+从 git checkout 改已发布 catalog 时，把 `--catalog` 指到 `cli/catalog.json`。
 
 - **maintained**：包内技能，按 `--agent` / `--scope` 安装。`--agent codex` 写到 `.agents/skills`；Cursor 读全局的 `~/.agents/skills`，不要再拷一份到 `~/.cursor/skills`。
 - **delegated**：执行上游安装配方（如 `npx skills` / `npx impeccable`）；非交互需 `--accept-permissions`。配方只装进 Claude Code 和 Codex/agents，不带 Cursor 拷贝目标。

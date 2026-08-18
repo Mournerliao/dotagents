@@ -50,7 +50,7 @@ test("npm pack includes catalog skills, and list works from the package", async 
     });
     assert.equal(listing.status, 0, listing.stderr);
     assert.match(listing.stdout, /package\/skills\/commit\/skill\.json/);
-    assert.match(listing.stdout, /package\/catalog\/catalog\.json/);
+    assert.match(listing.stdout, /package\/catalog\.json/);
     assert.match(listing.stdout, /package\/README\.md/);
     assert.doesNotMatch(listing.stdout, /package\/docs\//);
 

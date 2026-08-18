@@ -64,7 +64,7 @@ npx @mournerliao/agent-skills install impeccable --accept-permissions
 npx @mournerliao/agent-skills record --entry-json '{"kind":"delegated","name":"…", ...}'
 ```
 
-To edit the published catalog from a git checkout, point `--catalog` at `cli/catalog/catalog.json`.
+To edit the published catalog from a git checkout, point `--catalog` at `cli/catalog.json`.
 
 ## Supported platforms (maintained installs)
 
