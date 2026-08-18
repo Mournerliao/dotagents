@@ -1,6 +1,6 @@
 {
   "name": "agent-skills",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Operate the @mournerliao/agent-skills CLI to list, install, update, remove, or record the personal capability catalog.",
   "license": "MIT",
   "compatibility": ["codex", "claude-code"],

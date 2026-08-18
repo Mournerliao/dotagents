@@ -1,6 +1,6 @@
 ---
 name: agent-skills
-description: Operate @mournerliao/agent-skills: list, install, update, remove, or record the personal capability catalog. Use when the user mentions agent-skills, syncing skills, installing a catalog skill, or asks if this library has a skill for X. Prefer this CLI over npx skills or npx impeccable when the catalog already has that entry.
+description: Operate @mournerliao/agent-skills: list, install, update, remove, or record the personal capability catalog. Use when the user mentions agent-skills, @mournerliao/agent-skills, syncing skills, installing a catalog skill, or asks if this library has a skill for X. Prefer this CLI over npx skills or npx impeccable when the catalog already has that entry.
 ---
 
 # Agent skills
@@ -69,10 +69,10 @@ Delegated update/remove run the catalog recipe when one exists.
 
 Record writes a catalog file. It does not install.
 
-To change the published library, point `--catalog` at this repository's `catalog/catalog.json` in a git checkout, then commit. Do not record into an npx cache copy.
+To change the published library, point `--catalog` at this repository's `cli/catalog/catalog.json` in a git checkout, then commit. Do not record into an npx cache copy.
 
 ```bash
-npx --yes @mournerliao/agent-skills record --catalog /path/to/agent-skills/catalog/catalog.json --entry-json '<catalog-entry-object>'
+npx --yes @mournerliao/agent-skills record --catalog /path/to/dotagents/cli/catalog/catalog.json --entry-json '<catalog-entry-object>'
 ```
 
 Done when the CLI reports the entry recorded and the checkout catalog contains it.

@@ -1,6 +1,7 @@
 # Contributing
 
-This repository is a personal-first capability library. Contributions
+This repository is a personal-first collection of AI and agent resources.
+The skills CLI lives in `cli/` (`@mournerliao/agent-skills`). Contributions
 are welcome through pull requests, but the maintainer retains final curation
 authority. Acceptance is not automatic.
 
@@ -9,7 +10,7 @@ authority. Acceptance is not automatic.
 1. **Delegated entry** — an install recipe that runs an upstream installer
    without copying its source into this repository.
 2. **Maintained skill** — an original skill or an intentionally maintained fork
-   hosted under `skills/` with canonical metadata.
+   hosted under `cli/skills/` with canonical metadata.
 3. **Link-only recommendation** — an upstream link without a recipe (rare;
    prefer delegated when an installer exists).
 4. **CLI / docs fixes** — changes that improve the library model, validation,
@@ -32,10 +33,11 @@ repository source.
 
 ## Recording entries
 
-Agents and humans use the same command:
+Agents and humans use the same command. From a git checkout, point `--catalog`
+at `cli/catalog/catalog.json`:
 
 ```bash
-agent-skills record --entry-json '<catalog-entry-object>'
+npx @mournerliao/agent-skills record --catalog cli/catalog/catalog.json --entry-json '<catalog-entry-object>'
 ```
 
 ## Validation
@@ -43,7 +45,7 @@ agent-skills record --entry-json '<catalog-entry-object>'
 Before opening a pull request:
 
 ```bash
-npm run ci
+npm run ci --prefix cli
 ```
 
 ## Pull request templates

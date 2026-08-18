@@ -1,5 +1,7 @@
 # Domain context
 
+This glossary describes the **skills** capability library (`cli/`, published as `@mournerliao/agent-skills`). The repository around it is a personal collection of AI and agent resources; other kinds may appear as sibling directories.
+
 Personal tool library for syncing a curated set of agent capabilities (skills first; other capability kinds later) across machines, with one-shot install, update, and remove.
 
 ## Glossary

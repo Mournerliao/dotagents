@@ -18,7 +18,7 @@ function runNpm(args, options) {
   });
 }
 
-test("npm pack includes catalog skills and ADR, and list works from the package", async () => {
+test("npm pack includes catalog skills, and list works from the package", async () => {
   await access(join(repositoryRoot, "dist", "cli.js"));
   const packageMetadata = JSON.parse(
     await readFile(join(repositoryRoot, "package.json"), "utf8"),
@@ -50,7 +50,9 @@ test("npm pack includes catalog skills and ADR, and list works from the package"
     });
     assert.equal(listing.status, 0, listing.stderr);
     assert.match(listing.stdout, /package\/skills\/commit\/skill\.json/);
-    assert.match(listing.stdout, /package\/docs\/adr\/0001-personal-capability-library\.md/);
+    assert.match(listing.stdout, /package\/catalog\/catalog\.json/);
+    assert.match(listing.stdout, /package\/README\.md/);
+    assert.doesNotMatch(listing.stdout, /package\/docs\//);
 
     const install = runNpm(
       [

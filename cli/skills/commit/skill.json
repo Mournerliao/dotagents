@@ -1,6 +1,6 @@
 {
   "name": "commit",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Write git commit messages that follow the current repository's conventions, with an English subject and Chinese body.",
   "license": "MIT",
   "compatibility": ["codex", "claude-code"],

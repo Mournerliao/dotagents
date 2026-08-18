@@ -1,4 +1,6 @@
-## Agent skills
+## dotagents
+
+Personal collection of AI and agent resources. The skills CLI is the `cli/` package (`@mournerliao/agent-skills`).
 
 ### Issue tracker
 

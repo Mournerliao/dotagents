@@ -1,8 +1,8 @@
-# agent-skills 中文指南
+# @mournerliao/agent-skills 中文指南
 
-个人能力库：把常用 skill（以及以后的其他能力类型）记进 catalog，通过 npm 同步到任意电脑，再按需安装 / 更新 / 卸载。人和 AI 使用同一套 CLI。
+个人能力库：把常用 skill 记进 catalog，通过 npm 同步到任意电脑，再按需安装 / 更新 / 卸载。人和 AI 使用同一套 CLI。
 
-完整说明以仓库根目录英文 [README.md](../../README.md) 为准。
+CLI 在 [dotagents](https://github.com/Mournerliao/dotagents) 仓库的 [`cli/`](../../cli/) 目录。完整说明以英文 [guide.md](../guide.md) 为准。
 
 ## 安装
 
@@ -18,20 +18,22 @@ agent-skills list
 ## 常用命令
 
 ```bash
-agent-skills list
-agent-skills list --json
+npx @mournerliao/agent-skills list
+npx @mournerliao/agent-skills list --json
 
-agent-skills install agent-skills --agent codex --scope global
-agent-skills install commit --agent codex --scope project
-agent-skills install mattpocock-skills --dry-run
-agent-skills install impeccable --accept-permissions
+npx @mournerliao/agent-skills install agent-skills --agent codex --scope global
+npx @mournerliao/agent-skills install commit --agent codex --scope project
+npx @mournerliao/agent-skills install mattpocock-skills --dry-run
+npx @mournerliao/agent-skills install impeccable --accept-permissions
 
-agent-skills update commit --agent codex --scope project
-agent-skills remove commit --agent codex --scope project
+npx @mournerliao/agent-skills update commit --agent codex --scope project
+npx @mournerliao/agent-skills remove commit --agent codex --scope project
 
-agent-skills record --entry-json '{"kind":"delegated", ...}'
-agent-skills validate --catalog
+npx @mournerliao/agent-skills record --entry-json '{"kind":"delegated", ...}'
+npx @mournerliao/agent-skills validate --catalog
 ```
+
+从 git checkout 改已发布 catalog 时，把 `--catalog` 指到 `cli/catalog/catalog.json`。
 
 - **maintained**：包内技能，按 `--agent` / `--scope` 安装。`--agent codex` 写到 `.agents/skills`；Cursor 读全局的 `~/.agents/skills`，不要再拷一份到 `~/.cursor/skills`。
 - **delegated**：执行上游安装配方（如 `npx skills` / `npx impeccable`）；非交互需 `--accept-permissions`。配方只装进 Claude Code 和 Codex/agents，不带 Cursor 拷贝目标。

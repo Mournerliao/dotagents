@@ -4,7 +4,7 @@ Global skills install to `~/.agents/skills` (Codex layout). Cursor reads that di
 
 Personal layouts that symlink another git checkout into the install root stay out of band. They are not a catalog inclusion mode.
 
-Maintained skills in this package (for example `commit`) are published snapshots of personal authoring. Sync them into `skills/` on release; do not treat a live checkout and this package as two install sources.
+Maintained skills in this package (for example `commit`) are published snapshots of personal authoring. Sync them into this package's `skills/` directory on release; do not treat a live checkout and this package as two install sources.
 
 ## Considered options
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 — 2026-08-18
+
+- Install commands use `@mournerliao/agent-skills` / `agent-skills`.
+
 ## 1.0.1 — 2026-08-13
 
 - Document this package as the published snapshot; Cursor consumes `~/.agents/skills` and must not get a manual copy.
