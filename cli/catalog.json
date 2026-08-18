@@ -3,24 +3,6 @@
     {
       "kind": "maintained",
       "capabilityKind": "skill",
-      "name": "example",
-      "version": "1.0.0",
-      "compatibility": ["codex", "claude-code"],
-      "description": "A minimal canonical skill fixture.",
-      "path": "skills/example"
-    },
-    {
-      "kind": "maintained",
-      "capabilityKind": "skill",
-      "name": "summarize",
-      "version": "1.0.0",
-      "compatibility": ["codex"],
-      "description": "Summarize the current conversation or selection concisely.",
-      "path": "skills/summarize"
-    },
-    {
-      "kind": "maintained",
-      "capabilityKind": "skill",
       "name": "agent-skills",
       "version": "1.1.1",
       "compatibility": ["codex", "claude-code"],

@@ -59,7 +59,7 @@ test("installs a maintained skill without writing a lockfile", async () => {
     const result = runCli(
       [
         "install",
-        "example",
+        "commit",
         "--agent",
         "codex",
         "--scope",
@@ -70,13 +70,13 @@ test("installs a maintained skill without writing a lockfile", async () => {
       { cwd: project },
     );
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /Installed example@1\.0\.0 for codex \(project\)/);
+    assert.match(result.stdout, /Installed commit@1\.0\.2 for codex \(project\)/);
 
     const installed = await readFile(
-      join(project, ".agents", "skills", "example", "SKILL.md"),
+      join(project, ".agents", "skills", "commit", "SKILL.md"),
       "utf8",
     );
-    assert.match(installed, /name: example/);
+    assert.match(installed, /name: commit/);
 
     await assert.rejects(readFile(join(project, "agent-skills.lock.json")));
   } finally {
@@ -171,7 +171,7 @@ test("update and remove maintained skills by convention path", async () => {
     const install = runCli(
       [
         "install",
-        "example",
+        "commit",
         "--agent",
         "codex",
         "--scope",
@@ -186,7 +186,7 @@ test("update and remove maintained skills by convention path", async () => {
     const updated = runCli(
       [
         "update",
-        "example",
+        "commit",
         "--agent",
         "codex",
         "--scope",
@@ -197,12 +197,12 @@ test("update and remove maintained skills by convention path", async () => {
       { cwd: project },
     );
     assert.equal(updated.status, 0, updated.stderr);
-    assert.match(updated.stdout, /Updated example@1\.0\.0/);
+    assert.match(updated.stdout, /Updated commit@1\.0\.2/);
 
     const removed = runCli(
       [
         "remove",
-        "example",
+        "commit",
         "--agent",
         "codex",
         "--scope",
@@ -213,9 +213,9 @@ test("update and remove maintained skills by convention path", async () => {
       { cwd: project },
     );
     assert.equal(removed.status, 0, removed.stderr);
-    assert.match(removed.stdout, /Removed example@1\.0\.0/);
+    assert.match(removed.stdout, /Removed commit@1\.0\.2/);
     await assert.rejects(
-      readFile(join(project, ".agents", "skills", "example", "SKILL.md")),
+      readFile(join(project, ".agents", "skills", "commit", "SKILL.md")),
     );
   } finally {
     await rm(project, { recursive: true, force: true });

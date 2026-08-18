@@ -91,12 +91,12 @@ test("npm pack includes catalog skills, and list works from the package", async 
       payload.catalog.entries.some((entry) => entry.name === "commit"),
     );
 
-    const installExample = spawnSync(
+    const installCommit = spawnSync(
       process.execPath,
       [
         packagedCli,
         "install",
-        "example",
+        "commit",
         "--agent",
         "codex",
         "--scope",
@@ -104,12 +104,12 @@ test("npm pack includes catalog skills, and list works from the package", async 
       ],
       { cwd: project, encoding: "utf8" },
     );
-    assert.equal(installExample.status, 0, installExample.stderr);
+    assert.equal(installCommit.status, 0, installCommit.stderr);
     const skill = await readFile(
-      join(project, ".agents", "skills", "example", "SKILL.md"),
+      join(project, ".agents", "skills", "commit", "SKILL.md"),
       "utf8",
     );
-    assert.match(skill, /name: example/);
+    assert.match(skill, /name: commit/);
   } finally {
     await Promise.all([
       rm(packDir, { recursive: true, force: true }),

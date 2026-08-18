@@ -17,6 +17,10 @@ Skill behavior changes are tracked in each skill's own `CHANGELOG.md` under `cli
 - `commit` 1.0.2: install from this package; Cursor consumes `~/.agents/skills`.
 - `agent-skills` 1.1.1: catalog path in a git checkout is `cli/catalog.json`.
 
+### Removed
+
+- Placeholder maintained skills `example` and `summarize`.
+
 ### Added
 
 - ADR 0002: shared agents install root.
