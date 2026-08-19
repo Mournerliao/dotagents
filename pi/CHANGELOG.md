@@ -1,8 +1,15 @@
 # Changelog
 
-All notable changes to `@mournerliao/pi-extensions` are documented here.
+All notable changes to `@mournerliao/pi-cursor-provider` are documented here.
 
-## Unreleased
+## 0.1.0 — 2026-08-19
+
+### Added
+
+- Package layout under `pi/` of the dotagents collection, published as `@mournerliao/pi-cursor-provider`.
+- `extensions/cursor-provider.ts` — Cursor Agent CLI provider with a one-turn `--force` retry after Pi confirmation.
+- Model catalogue cache (24 h, under `${XDG_CACHE_HOME:-~/.cache}/dotagents-pi/`), removing the multi-second `agent models` call from every Pi start and giving a real fallback when the CLI is unreachable.
+- An oversized context now fails with a message pointing at `/compact` instead of an opaque `E2BIG` from the spawn, since the prompt travels as a single argv entry.
 
 ### Fixed
 
@@ -13,15 +20,3 @@ All notable changes to `@mournerliao/pi-extensions` are documented here.
 - `CURSOR_API_KEY` travels in the child environment rather than as an `--api-key` argument, keeping it out of the process table.
 - Tool markers such as `⏳ [Shell] …` are stripped from later prompts, so Cursor no longer reads this provider's transcript decoration back as its own output.
 - A `/cursor-allow once` grant is bound to the start of a turn, so an automatic compaction request can no longer consume it.
-
-### Added
-
-- Model catalogue cache (24 h, under `${XDG_CACHE_HOME:-~/.cache}/dotagents-pi/`), removing the multi-second `agent models` call from every Pi start and giving a real fallback when the CLI is unreachable.
-- An oversized context now fails with a message pointing at `/compact` instead of an opaque `E2BIG` from the spawn, since the prompt travels as a single argv entry.
-
-## 0.1.0 — 2026-08-19
-
-### Added
-
-- Package layout under `pi/` of the dotagents collection.
-- `extensions/cursor-provider.ts` — Cursor Agent CLI provider with a one-turn `--force` retry after Pi confirmation.

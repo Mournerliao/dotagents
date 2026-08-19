@@ -16,4 +16,4 @@ The repository uses a single-context domain documentation layout. See `docs/agen
 
 ### Pi extensions
 
-Pi extensions are authored in `pi/` (`@mournerliao/pi-extensions`) and installed with `pi install`, not the skills CLI. See `pi/README.md`, `docs/adr/0003-pi-extensions-package.md`, and `docs/adr/0004-own-cursor-provider.md`.
+Pi extensions are authored in `pi/` (`@mournerliao/pi-cursor-provider`) and installed with `pi install`, not the skills CLI. See `pi/README.md`, `docs/adr/0003-pi-extensions-package.md`, and `docs/adr/0004-own-cursor-provider.md`.

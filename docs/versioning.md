@@ -1,6 +1,6 @@
 # Versioning
 
-CLI releases, skill releases, and the pi-extensions package are versioned independently.
+CLI releases, skill releases, and the pi Cursor provider package are versioned independently.
 
 ## CLI (`@mournerliao/agent-skills`)
 
@@ -8,7 +8,7 @@ CLI releases, skill releases, and the pi-extensions package are versioned indepe
 - Documented in [`cli/CHANGELOG.md`](../cli/CHANGELOG.md).
 - A CLI bump does **not** imply that every skill changed.
 
-## Pi extensions (`@mournerliao/pi-extensions`)
+## Pi Cursor provider (`@mournerliao/pi-cursor-provider`)
 
 - Uses semantic versioning for the `pi/` package.
 - Documented in [`pi/CHANGELOG.md`](../pi/CHANGELOG.md).

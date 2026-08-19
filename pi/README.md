@@ -1,6 +1,6 @@
-# @mournerliao/pi-extensions
+# @mournerliao/pi-cursor-provider
 
-Personal [pi](https://pi.dev) extensions. This package is the `pi/` directory of [dotagents](https://github.com/Mournerliao/dotagents). It is not part of the skills catalog; install it with `pi install`, not `agent-skills`.
+Cursor Agent CLI provider for [pi](https://pi.dev). This package is the `pi/` directory of [dotagents](https://github.com/Mournerliao/dotagents). It is not part of the skills catalog; install it with `pi install`, not `agent-skills`.
 
 Put original extensions in `extensions/`. Extract testable logic into `src/` when it needs unit tests.
 
@@ -15,7 +15,7 @@ pi install "$(pwd)/pi"
 After publish:
 
 ```bash
-pi install npm:@mournerliao/pi-extensions
+pi install npm:@mournerliao/pi-cursor-provider
 ```
 
 Try once without writing settings:

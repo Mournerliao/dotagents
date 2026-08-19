@@ -5,7 +5,7 @@ Personal collection of AI and agent resources. Not a marketplace.
 | Path | What |
 |------|------|
 | [`cli/`](cli/) | [`@mournerliao/agent-skills`](https://www.npmjs.com/package/@mournerliao/agent-skills) — catalog and CLI for agent skills |
-| [`pi/`](pi/) | [`@mournerliao/pi-extensions`](pi/) — original [pi](https://pi.dev) extensions (`pi install`) |
+| [`pi/`](pi/) | [`@mournerliao/pi-cursor-provider`](https://www.npmjs.com/package/@mournerliao/pi-cursor-provider) — Cursor provider for [pi](https://pi.dev) (`pi install`) |
 | [`docs/`](docs/) | Guides, ADRs, and agent-facing domain docs |
 
 ## Skills

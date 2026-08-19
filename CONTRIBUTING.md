@@ -2,7 +2,7 @@
 
 This repository is a personal-first collection of AI and agent resources.
 The skills CLI lives in `cli/` (`@mournerliao/agent-skills`). Original pi
-extensions live in `pi/` (`@mournerliao/pi-extensions`). Contributions
+extensions live in `pi/` (`@mournerliao/pi-cursor-provider`). Contributions
 are welcome through pull requests, but the maintainer retains final curation
 authority. Acceptance is not automatic.
 

@@ -1,7 +1,7 @@
 {
-  "name": "@mournerliao/pi-extensions",
+  "name": "@mournerliao/pi-cursor-provider",
   "version": "0.1.0",
-  "description": "Personal pi-coding-agent extensions from the dotagents collection, including a Cursor Agent CLI provider",
+  "description": "Cursor Agent CLI provider for pi-coding-agent, from the dotagents collection",
   "type": "module",
   "license": "MIT",
   "files": [
