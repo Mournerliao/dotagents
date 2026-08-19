@@ -4,6 +4,7 @@ import { PassThrough } from "node:stream";
 import test from "node:test";
 import type { Api, AssistantMessageEvent, Context, Model } from "@earendil-works/pi-ai";
 import type { ChildProcess } from "node:child_process";
+import { MAX_PROMPT_BYTES } from "../src/cursor-provider/spawn.ts";
 import { streamCursorCli, type SpawnFn } from "../src/cursor-provider/stream.ts";
 
 function testModel(): Model<Api> {
@@ -98,7 +99,55 @@ test("streamCursorCli renders assistant text from NDJSON", async () => {
   assert.match(textOf(events), /hello from cursor/);
 });
 
+test("streamCursorCli asks resolveCliId for the id the CLI should run", async () => {
+  const { spawn, args } = spawnFrom([{ lines: [assistantLine("ok")] }]);
+  await collect(
+    streamCursorCli(testModel(), context, { reasoning: "max" }, {
+      spawn,
+      workspacePath: "/tmp/ws",
+      resolveCliId: (id, level) => `${id}-${level ?? "default"}`,
+    }),
+  );
+  const modelIndex = args[0]?.indexOf("--model") ?? -1;
+  assert.ok(modelIndex >= 0);
+  assert.equal(args[0]?.[modelIndex + 1], "auto-max");
+});
+
+test("streamCursorCli spawns with --force when the turn was already granted it", async () => {
+  const { spawn, args } = spawnFrom([{ lines: [assistantLine("ok")] }]);
+  await collect(
+    streamCursorCli(testModel(), context, undefined, { spawn, workspacePath: "/tmp/ws", force: true }),
+  );
+  assert.equal(args.length, 1);
+  assert.ok(args[0]?.includes("--force"));
+});
+
+test("streamCursorCli refuses a context too large for the command line", async () => {
+  const { spawn, args } = spawnFrom([]);
+  const huge: Context = {
+    messages: [{ role: "user", content: "a".repeat(MAX_PROMPT_BYTES + 1), timestamp: 1 }],
+  };
+  const events = await collect(
+    streamCursorCli(testModel(), huge, undefined, { spawn, workspacePath: "/tmp/ws" }),
+  );
+  assert.equal(args.length, 0);
+  const last = events.at(-1);
+  assert.equal(last?.type, "error");
+  assert.match(last?.type === "error" ? (last.error.errorMessage ?? "") : "", /\/compact/);
+});
+
+test("streamCursorCli reports a non-zero exit even when some text arrived", async () => {
+  const { spawn } = spawnFrom([{ lines: [assistantLine("partial answer")], exitCode: 1 }]);
+  const events = await collect(
+    streamCursorCli(testModel(), context, undefined, { spawn, workspacePath: "/tmp/ws" }),
+  );
+  const last = events.at(-1);
+  assert.equal(last?.type, "error");
+  assert.match(last?.type === "error" ? (last.error.errorMessage ?? "") : "", /exited with code 1/);
+});
+
 test("streamCursorCli retries with --force after a confirmed rejection", async () => {
+  // A blocked tool makes the CLI exit non-zero; that must still reach the retry prompt.
   const { spawn, args } = spawnFrom([
     {
       lines: [
@@ -108,6 +157,7 @@ test("streamCursorCli retries with --force after a confirmed rejection", async (
           result: { rejected: { reason: "Auto-review blocked this tool" } },
         }),
       ],
+      exitCode: 1,
     },
     { lines: [assistantLine("deleted")] },
   ]);

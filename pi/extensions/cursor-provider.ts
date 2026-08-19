@@ -1,43 +1,61 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { Api, Context, Model, SimpleStreamOptions } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { runAgentLogin, runAgentLogout, runAgentModels, runAgentStatus } from "../src/cursor-provider/agent-cli.ts";
+import { catalogCachePath, loadModelDefs } from "../src/cursor-provider/catalog.ts";
 import { parseForceArg, takeForce } from "../src/cursor-provider/consent.ts";
-import { STATIC_MODELS, toProviderModels } from "../src/cursor-provider/models.ts";
+import { buildCatalog } from "../src/cursor-provider/models.ts";
 import { streamCursorCli } from "../src/cursor-provider/stream.ts";
 import type { ForceScope } from "../src/cursor-provider/types.ts";
 
 export default async function cursorProvider(pi: ExtensionAPI): Promise<void> {
   const forceState: { scope: ForceScope } = { scope: "off" };
   let turnCtx: ExtensionContext | undefined;
+  let forceThisTurn = false;
 
+  // Deciding force once per turn keeps a `once` grant from being spent by an
+  // automatic compaction request, which streams through this same provider.
   pi.on("before_agent_start", (_event, ctx) => {
     turnCtx = ctx;
+    const { force, next } = takeForce(forceState.scope);
+    forceState.scope = next;
+    forceThisTurn = force;
   });
   pi.on("agent_end", () => {
     turnCtx = undefined;
+    forceThisTurn = false;
   });
 
-  let modelDefs = STATIC_MODELS;
-  try {
-    modelDefs = await runAgentModels();
-  } catch {
-    modelDefs = STATIC_MODELS;
-  }
+  const cachePath = catalogCachePath();
+  const { models: modelDefs } = await loadModelDefs({
+    readCache: async () => {
+      try {
+        return await readFile(cachePath, "utf8");
+      } catch {
+        return undefined;
+      }
+    },
+    writeCache: async (contents) => {
+      await mkdir(dirname(cachePath), { recursive: true });
+      await writeFile(cachePath, contents, "utf8");
+    },
+    fetchModels: () => runAgentModels(),
+    now: Date.now,
+  });
+  const catalog = buildCatalog(modelDefs);
 
   pi.registerProvider("cursor", {
     name: "Cursor",
     baseUrl: "cli://cursor-agent",
     apiKey: "CURSOR_API_KEY",
     api: "cursor-cli" as Api,
-    models: toProviderModels(modelDefs),
+    models: catalog.models,
     streamSimple: (model: Model<Api>, context: Context, options?: SimpleStreamOptions) => {
       const host = {
         hasUI: turnCtx?.hasUI ?? false,
-        takeForce: () => {
-          const result = takeForce(forceState.scope);
-          forceState.scope = result.next;
-          return result.force;
-        },
+        force: forceThisTurn,
+        resolveCliId: catalog.resolveCliId,
       };
       return streamCursorCli(model, context, options, turnCtx?.hasUI
         ? { ...host, confirm: (title, message) => turnCtx!.ui.confirm(title, message) }

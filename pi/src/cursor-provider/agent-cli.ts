@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { parseAgentModelsOutput } from "./models.ts";
-import { resolveAgentPath, resolveApiKey } from "./spawn.ts";
+import { buildSpawnEnv, resolveAgentPath, resolveApiKey } from "./spawn.ts";
 import type { CursorModelDef, EnvMap } from "./types.ts";
 
 export const DISCOVERY_TIMEOUT_MS = 15_000;
@@ -58,12 +58,8 @@ export async function runAgentModels(
   doSpawn: SpawnFn = spawn,
 ): Promise<CursorModelDef[]> {
   const agentPath = resolveAgentPath(env);
-  const args = ["models"];
-  const apiKey = resolveApiKey(env);
-  if (apiKey) args.unshift("--api-key", apiKey);
-
-  const { code, stdout, stderr } = await runCaptured(agentPath, args, {
-    env,
+  const { code, stdout, stderr } = await runCaptured(agentPath, ["models"], {
+    env: buildSpawnEnv(env, resolveApiKey(env)),
     timeoutMs: DISCOVERY_TIMEOUT_MS,
     spawn: doSpawn,
   });

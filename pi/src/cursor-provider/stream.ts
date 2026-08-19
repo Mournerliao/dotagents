@@ -8,21 +8,28 @@ import type {
   Model,
   SimpleStreamOptions,
   TextContent,
+  ThinkingLevel,
 } from "@earendil-works/pi-ai";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { decideRetry } from "./consent.ts";
 import {
   extractRejection,
   formatRejected,
+  formatRetrying,
   formatToolStarted,
   isToolCallEvent,
   parseLine,
   toPiToolName,
   toolCallKey,
 } from "./events.ts";
-import { toCursorId } from "./models.ts";
 import { serializeContext } from "./prompt.ts";
-import { buildPrintArgs, resolveAgentPath, resolveApiKey } from "./spawn.ts";
+import {
+  buildPrintArgs,
+  buildSpawnEnv,
+  checkPromptSize,
+  resolveAgentPath,
+  resolveApiKey,
+} from "./spawn.ts";
 import type { CursorAssistantEvent, EnvMap, ToolRejection } from "./types.ts";
 
 export type SpawnFn = (
@@ -39,7 +46,9 @@ export type CursorStreamHost = {
   env?: EnvMap;
   hasUI?: boolean;
   confirm?: (title: string, message: string) => Promise<boolean>;
-  takeForce?: () => boolean;
+  /** Whether this turn was already granted `--force` by `/cursor-allow`. */
+  force?: boolean;
+  resolveCliId?: (canonicalId: string, level?: ThinkingLevel) => string;
 };
 
 function emptyUsage(): AssistantMessage["usage"] {
@@ -65,6 +74,7 @@ export function streamCursorCli(
   const env = host.env ?? process.env;
   const agentPath = host.agentPath ?? resolveAgentPath(env);
   const workspacePath = host.workspacePath ?? process.cwd();
+  const resolveCliId = host.resolveCliId ?? ((canonicalId: string) => canonicalId);
 
   void (async () => {
     const output: AssistantMessage = {
@@ -112,25 +122,24 @@ export function streamCursorCli(
       stream.end();
     };
 
+    const prompt = serializeContext(context);
+
     const runSpawn = async (force: boolean): Promise<{
       outcome: "ok" | "aborted" | "error";
       rejections: ToolRejection[];
       errorMessage?: string;
     }> => {
       const rejections: ToolRejection[] = [];
-      const reasoningLevel = options?.reasoning;
-      const cliModelId = toCursorId(model.id, reasoningLevel);
       const args = buildPrintArgs({
-        modelId: cliModelId,
+        modelId: resolveCliId(model.id, options?.reasoning),
         workspacePath,
-        prompt: serializeContext(context),
+        prompt,
         force,
-        apiKey: resolveApiKey(env),
       });
 
       const child = doSpawn(agentPath, args, {
         stdio: ["ignore", "pipe", "pipe"],
-        env: env as NodeJS.ProcessEnv,
+        env: buildSpawnEnv(env, resolveApiKey(env)) as NodeJS.ProcessEnv,
       });
 
       const onAbort = (): void => {
@@ -186,7 +195,9 @@ export function streamCursorCli(
             resolve({ outcome: "aborted", rejections });
             return;
           }
-          if (code !== 0 && output.content.length === 0) {
+          // A rejected tool is a normal non-zero exit; the caller may retry it with
+          // --force. Any other non-zero exit is a real failure even if text arrived.
+          if (code !== 0 && rejections.length === 0) {
             const stderr = stderrChunks.join("").trim();
             resolve({
               outcome: "error",
@@ -210,7 +221,13 @@ export function streamCursorCli(
     try {
       stream.push({ type: "start", partial: output });
 
-      const alreadyForced = host.takeForce?.() ?? false;
+      const oversized = checkPromptSize(prompt);
+      if (oversized) {
+        fail("error", oversized);
+        return;
+      }
+
+      const alreadyForced = host.force ?? false;
       const first = await runSpawn(alreadyForced);
       if (first.outcome === "aborted") {
         fail("aborted", "aborted");
@@ -230,7 +247,7 @@ export function streamCursorCli(
       if (decision.kind === "ask" && host.confirm) {
         const ok = await host.confirm("Cursor blocked a tool", decision.summary);
         if (ok) {
-          pushText("\n↻ Retrying this turn with --force (Cursor will auto-approve tools).\n");
+          pushText(formatRetrying());
           const retry = await runSpawn(true);
           if (retry.outcome === "aborted") {
             fail("aborted", "aborted");

@@ -38,6 +38,17 @@ export function toolCallKey(event: CursorToolCallEvent): string | undefined {
   return Object.keys(event.tool_call)[0];
 }
 
+/**
+ * Cursor runs its own tools, so their activity reaches Pi as assistant text rather than
+ * structured tool calls. These prefixes tag those lines so the next turn's prompt can
+ * drop them instead of replaying this transcript decoration back to the model.
+ */
+export const TRANSCRIPT_MARKERS = ["⏳ ", "⛔ ", "↻ "] as const;
+
+export function isTranscriptMarkerLine(line: string): boolean {
+  return TRANSCRIPT_MARKERS.some((marker) => line.startsWith(marker));
+}
+
 export function formatToolStarted(toolName: string, args: Record<string, unknown>): string {
   const argsSnippet = JSON.stringify(args);
   const brief = argsSnippet.length > 120 ? `${argsSnippet.slice(0, 120)}…` : argsSnippet;
@@ -46,6 +57,10 @@ export function formatToolStarted(toolName: string, args: Record<string, unknown
 
 export function formatRejected(rejection: ToolRejection): string {
   return `\n⛔ [${rejection.toolName}] blocked: ${rejection.reason}\n`;
+}
+
+export function formatRetrying(): string {
+  return "\n↻ Retrying this turn with --force (Cursor will auto-approve tools).\n";
 }
 
 export function extractRejection(event: CursorToolCallEvent): ToolRejection | undefined {

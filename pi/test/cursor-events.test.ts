@@ -3,7 +3,9 @@ import test from "node:test";
 import {
   extractRejection,
   formatRejected,
+  formatRetrying,
   formatToolStarted,
+  isTranscriptMarkerLine,
   parseLine,
   toPiToolName,
 } from "../src/cursor-provider/events.ts";
@@ -55,4 +57,20 @@ test("formatters keep a short tool marker", () => {
     formatRejected({ toolName: "Delete", args: { path: ".env" }, reason: "blocked" }),
     "\n⛔ [Delete] blocked: blocked\n",
   );
+});
+
+test("every marker the provider emits is recognised as transcript decoration", () => {
+  const emitted = [
+    formatToolStarted("Delete", { path: ".env" }),
+    formatRejected({ toolName: "Delete", args: {}, reason: "blocked" }),
+    formatRetrying(),
+  ];
+  for (const text of emitted) {
+    const lines = text.split("\n").filter((line) => line.length > 0);
+    assert.ok(lines.length > 0);
+    for (const line of lines) {
+      assert.ok(isTranscriptMarkerLine(line), `expected a marker line: ${line}`);
+    }
+  }
+  assert.equal(isTranscriptMarkerLine("Deleted the file."), false);
 });

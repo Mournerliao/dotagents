@@ -1,20 +1,27 @@
-export type ReasoningLevel = "minimal" | "low" | "medium" | "high" | "xhigh";
-
 export type CursorModelDef = {
   id: string;
   name: string;
-  reasoning: boolean;
-  contextWindow: number;
-  maxTokens: number;
 };
 
-export type ModelVariants = {
-  default: string;
-  minimal?: string;
-  low?: string;
-  medium?: string;
-  high?: string;
-  xhigh?: string;
+/**
+ * Reasoning effort words Cursor encodes into model ids, e.g. `gpt-5.6-sol-xhigh`.
+ * `extra-high` is a spelling of `xhigh`; `none` means the model can stop reasoning.
+ */
+export type CursorEffort =
+  | "none"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "extra-high"
+  | "max";
+
+export type ParsedModelId = {
+  base: string;
+  thinking: boolean;
+  effort?: CursorEffort | undefined;
+  fast: boolean;
 };
 
 export type CursorToolCallPayload = {

@@ -1,169 +1,261 @@
-import type { CursorModelDef, ModelVariants, ReasoningLevel } from "./types.ts";
+import type { ModelThinkingLevel, ThinkingLevel, ThinkingLevelMap } from "@earendil-works/pi-ai";
+import type { CursorEffort, CursorModelDef, ParsedModelId } from "./types.ts";
 
 /**
- * Fallback list when `agent models` fails. Also supplies contextWindow / maxTokens
- * for discovered ids. Source: Cursor Agent CLI model catalogue, plus grok-4.6
- * variants used by this repo's owner.
+ * Last-resort catalogue used only when `agent models` is unreachable and no cache
+ * exists. Deliberately just `auto`: a hand-written list of ids goes stale silently,
+ * and offering models the account cannot spawn is worse than offering one that works.
  */
-export const STATIC_MODELS: CursorModelDef[] = [
-  { id: "auto", name: "Auto", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "composer-1.5", name: "Composer 1.5", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "composer-1", name: "Composer 1", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "opus-4.6-thinking", name: "Claude 4.6 Opus (Thinking)", reasoning: true, contextWindow: 200000, maxTokens: 32000 },
-  { id: "opus-4.6", name: "Claude 4.6 Opus", reasoning: false, contextWindow: 200000, maxTokens: 32000 },
-  { id: "opus-4.5-thinking", name: "Claude 4.5 Opus (Thinking)", reasoning: true, contextWindow: 200000, maxTokens: 32000 },
-  { id: "opus-4.5", name: "Claude 4.5 Opus", reasoning: false, contextWindow: 200000, maxTokens: 32000 },
-  { id: "sonnet-4.6-thinking", name: "Claude 4.6 Sonnet (Thinking)", reasoning: true, contextWindow: 200000, maxTokens: 32000 },
-  { id: "sonnet-4.6", name: "Claude 4.6 Sonnet", reasoning: false, contextWindow: 200000, maxTokens: 32000 },
-  { id: "sonnet-4.5-thinking", name: "Claude 4.5 Sonnet (Thinking)", reasoning: true, contextWindow: 200000, maxTokens: 32000 },
-  { id: "sonnet-4.5", name: "Claude 4.5 Sonnet", reasoning: false, contextWindow: 200000, maxTokens: 32000 },
-  { id: "gpt-5.3-codex", name: "GPT-5.3 Codex", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.3-codex-low", name: "GPT-5.3 Codex Low", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.3-codex-high", name: "GPT-5.3 Codex High", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.3-codex-xhigh", name: "GPT-5.3 Codex Extra High", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.3-codex-fast", name: "GPT-5.3 Codex Fast", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.3-codex-low-fast", name: "GPT-5.3 Codex Low Fast", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.3-codex-high-fast", name: "GPT-5.3 Codex High Fast", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.3-codex-xhigh-fast", name: "GPT-5.3 Codex Extra High Fast", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.2", name: "GPT-5.2", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.2-high", name: "GPT-5.2 High", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.2-codex", name: "GPT-5.2 Codex", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.2-codex-high", name: "GPT-5.2 Codex High", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.2-codex-low", name: "GPT-5.2 Codex Low", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.2-codex-xhigh", name: "GPT-5.2 Codex Extra High", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.2-codex-fast", name: "GPT-5.2 Codex Fast", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.2-codex-high-fast", name: "GPT-5.2 Codex High Fast", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.2-codex-low-fast", name: "GPT-5.2 Codex Low Fast", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.2-codex-xhigh-fast", name: "GPT-5.2 Codex Extra High Fast", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.1-high", name: "GPT-5.1 High", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.1-codex-max", name: "GPT-5.1 Codex Max", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.1-codex-max-high", name: "GPT-5.1 Codex Max High", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gpt-5.1-codex-mini", name: "GPT-5.1 Codex Mini", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "gemini-3-pro", name: "Gemini 3 Pro", reasoning: false, contextWindow: 1000000, maxTokens: 65536 },
-  { id: "gemini-3-flash", name: "Gemini 3 Flash", reasoning: false, contextWindow: 1000000, maxTokens: 65536 },
-  { id: "grok", name: "Grok", reasoning: false, contextWindow: 131072, maxTokens: 32768 },
-  { id: "grok-4.6", name: "Grok 4.6", reasoning: false, contextWindow: 200000, maxTokens: 32768 },
-  { id: "grok-4.6-high", name: "Grok 4.6 High", reasoning: true, contextWindow: 200000, maxTokens: 32768 },
+export const STATIC_MODELS: CursorModelDef[] = [{ id: "auto", name: "Auto" }];
+
+const CONTEXT_WINDOW_DEFAULT = 200_000;
+const CONTEXT_WINDOW_1M = 1_000_000;
+
+/** The CLI never reports an output cap, so every model gets the same conservative value. */
+const MAX_TOKENS = 32_768;
+
+/** Longest first so `extra-high` wins over `high`. */
+const EFFORTS_BY_LENGTH: CursorEffort[] = [
+  "extra-high",
+  "minimal",
+  "medium",
+  "xhigh",
+  "high",
+  "none",
+  "low",
+  "max",
 ];
 
-export const STATIC_MODELS_MAP = new Map<string, CursorModelDef>(
-  STATIC_MODELS.map((m) => [m.id, m]),
-);
-
-export const MODEL_MAP: Record<string, ModelVariants> = {
-  "claude-sonnet-4-5": {
-    default: "sonnet-4.5",
-    minimal: "sonnet-4.5-thinking",
-    low: "sonnet-4.5-thinking",
-    medium: "sonnet-4.5-thinking",
-    high: "sonnet-4.5-thinking",
-    xhigh: "sonnet-4.5-thinking",
-  },
-  "claude-sonnet-4-6": {
-    default: "sonnet-4.6",
-    minimal: "sonnet-4.6-thinking",
-    low: "sonnet-4.6-thinking",
-    medium: "sonnet-4.6-thinking",
-    high: "sonnet-4.6-thinking",
-    xhigh: "sonnet-4.6-thinking",
-  },
-  "claude-opus-4-5": {
-    default: "opus-4.5",
-    minimal: "opus-4.5-thinking",
-    low: "opus-4.5-thinking",
-    medium: "opus-4.5-thinking",
-    high: "opus-4.5-thinking",
-    xhigh: "opus-4.5-thinking",
-  },
-  "claude-opus-4-6": {
-    default: "opus-4.6",
-    minimal: "opus-4.6-thinking",
-    low: "opus-4.6-thinking",
-    medium: "opus-4.6-thinking",
-    high: "opus-4.6-thinking",
-    xhigh: "opus-4.6-thinking",
-  },
-  "gpt-5.2": {
-    default: "gpt-5.2",
-    high: "gpt-5.2-high",
-    xhigh: "gpt-5.2-high",
-  },
-  "gpt-5.2-codex": {
-    default: "gpt-5.2-codex",
-    minimal: "gpt-5.2-codex-low",
-    low: "gpt-5.2-codex-low",
-    high: "gpt-5.2-codex-high",
-    xhigh: "gpt-5.2-codex-xhigh",
-  },
-  "gpt-5.2-codex-fast": {
-    default: "gpt-5.2-codex-fast",
-    minimal: "gpt-5.2-codex-low-fast",
-    low: "gpt-5.2-codex-low-fast",
-    high: "gpt-5.2-codex-high-fast",
-    xhigh: "gpt-5.2-codex-xhigh-fast",
-  },
-  "gpt-5.3-codex": {
-    default: "gpt-5.3-codex",
-    minimal: "gpt-5.3-codex-low",
-    low: "gpt-5.3-codex-low",
-    high: "gpt-5.3-codex-high",
-    xhigh: "gpt-5.3-codex-xhigh",
-  },
-  "gpt-5.3-codex-fast": {
-    default: "gpt-5.3-codex-fast",
-    minimal: "gpt-5.3-codex-low-fast",
-    low: "gpt-5.3-codex-low-fast",
-    high: "gpt-5.3-codex-high-fast",
-    xhigh: "gpt-5.3-codex-xhigh-fast",
-  },
-  "gpt-5.1": {
-    default: "gpt-5.1-high",
-  },
-  "gpt-5.1-codex-max": {
-    default: "gpt-5.1-codex-max",
-    high: "gpt-5.1-codex-max-high",
-    xhigh: "gpt-5.1-codex-max-high",
-  },
-  "gemini-3-pro-preview": { default: "gemini-3-pro" },
-  "gemini-3-flash-preview": { default: "gemini-3-flash" },
-  "grok-code-fast-1": { default: "grok" },
-  "grok-4.6": {
-    default: "grok-4.6",
-    high: "grok-4.6-high",
-    xhigh: "grok-4.6-high",
-  },
+const EFFORT_TO_THINKING_LEVEL: Record<CursorEffort, ModelThinkingLevel> = {
+  none: "off",
+  minimal: "minimal",
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: "xhigh",
+  "extra-high": "xhigh",
+  max: "max",
 };
 
-const REASONING_LEVELS = new Set<string>(["minimal", "low", "medium", "high", "xhigh"]);
+const THINKING_LEVELS: ModelThinkingLevel[] = [
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
 
-const cursorDefaultToCanonical = new Map<string, string>();
-const allMappedCursorIds = new Set<string>();
-for (const [canonicalId, variants] of Object.entries(MODEL_MAP)) {
-  cursorDefaultToCanonical.set(variants.default, canonicalId);
-  for (const cursorId of Object.values(variants)) {
-    if (cursorId) allMappedCursorIds.add(cursorId);
+/** Which variant Cursor treats as the family default when no level is requested. */
+const DEFAULT_LEVEL_PREFERENCE: ModelThinkingLevel[] = [
+  "high",
+  "medium",
+  "xhigh",
+  "max",
+  "low",
+  "minimal",
+  "off",
+];
+
+function stripSuffix(id: string, suffix: string): string | undefined {
+  const tail = `-${suffix}`;
+  return id.length > tail.length && id.endsWith(tail) ? id.slice(0, -tail.length) : undefined;
+}
+
+/**
+ * Splits a Cursor model id into its parts. Cursor spells families as
+ * `base[-thinking][-effort][-fast]`, but puts `-thinking` on either side of the
+ * effort word (`claude-opus-5-thinking-high` vs `claude-4.6-opus-high-thinking`).
+ */
+export function parseModelId(id: string): ParsedModelId {
+  let rest = id;
+  let fast = false;
+  let thinking = false;
+  let effort: CursorEffort | undefined;
+
+  const withoutFast = stripSuffix(rest, "fast");
+  if (withoutFast !== undefined) {
+    rest = withoutFast;
+    fast = true;
   }
-}
 
-export function inferReasoning(id: string): boolean {
-  return /(-thinking|-high|-xhigh|-max-high)$/.test(id);
-}
-
-export function toCanonicalId(cursorId: string): string | null {
-  const canonical = cursorDefaultToCanonical.get(cursorId);
-  if (canonical) return canonical;
-  if (allMappedCursorIds.has(cursorId)) return null;
-  return cursorId;
-}
-
-export function toCursorId(canonicalId: string, reasoning?: string): string {
-  const family = MODEL_MAP[canonicalId];
-  if (!family) return canonicalId;
-  if (reasoning && REASONING_LEVELS.has(reasoning)) {
-    const variant = family[reasoning as ReasoningLevel];
-    if (variant) return variant;
+  const withoutTrailingThinking = stripSuffix(rest, "thinking");
+  if (withoutTrailingThinking !== undefined) {
+    rest = withoutTrailingThinking;
+    thinking = true;
   }
-  return family.default;
+
+  for (const candidate of EFFORTS_BY_LENGTH) {
+    const withoutEffort = stripSuffix(rest, candidate);
+    if (withoutEffort !== undefined) {
+      rest = withoutEffort;
+      effort = candidate;
+      break;
+    }
+  }
+
+  if (!thinking) {
+    const withoutLeadingThinking = stripSuffix(rest, "thinking");
+    if (withoutLeadingThinking !== undefined) {
+      rest = withoutLeadingThinking;
+      thinking = true;
+    }
+  }
+
+  return { base: rest, thinking, effort, fast };
+}
+
+/** The id Pi shows. Effort is dropped because Pi selects it through thinking levels. */
+export function canonicalIdOf(parsed: ParsedModelId): string {
+  const parts = [parsed.base];
+  if (parsed.thinking) parts.push("thinking");
+  if (parsed.fast) parts.push("fast");
+  return parts.join("-");
+}
+
+const EFFORT_WORD_RE = /\b(none|minimal|low|medium|high|max)\b/i;
+
+/**
+ * Cursor omits the effort word from the display name of a family's default variant:
+ * `claude-opus-4-7-xhigh` is "Claude Opus 4.7 1M" while its siblings say "High", "Max"…
+ */
+export function isDefaultVariantName(name: string): boolean {
+  return !EFFORT_WORD_RE.test(name);
+}
+
+export function contextWindowFromName(name: string): number {
+  return /\b1m\b/i.test(name) ? CONTEXT_WINDOW_1M : CONTEXT_WINDOW_DEFAULT;
+}
+
+export type ProviderModelConfig = {
+  id: string;
+  name: string;
+  reasoning: boolean;
+  thinkingLevelMap?: ThinkingLevelMap;
+  input: ["text"];
+  cost: { input: 0; output: 0; cacheRead: 0; cacheWrite: 0 };
+  contextWindow: number;
+  maxTokens: number;
+};
+
+export type Catalog = {
+  models: ProviderModelConfig[];
+  /** Maps a Pi model id plus thinking level back to the id the CLI expects. */
+  resolveCliId: (canonicalId: string, level?: ThinkingLevel) => string;
+};
+
+/**
+ * `thinkingLevelMap` values are provider-specific strings that Pi only tests for
+ * null, so this provider stores the CLI id each level maps to. Nothing sends them
+ * as a request parameter: the CLI takes the effort as part of `--model`.
+ */
+
+type Group = {
+  canonicalId: string;
+  base: string;
+  byLevel: Map<ModelThinkingLevel, CursorModelDef>;
+  defaultDef?: CursorModelDef;
+  fallbackDef: CursorModelDef;
+};
+
+function groupByFamily(defs: readonly CursorModelDef[]): Group[] {
+  const groups = new Map<string, Group>();
+
+  for (const def of defs) {
+    const parsed = parseModelId(def.id);
+    const canonicalId = canonicalIdOf(parsed);
+    let group = groups.get(canonicalId);
+    if (!group) {
+      group = { canonicalId, base: parsed.base, byLevel: new Map(), fallbackDef: def };
+      groups.set(canonicalId, group);
+    }
+
+    const level = parsed.effort ? EFFORT_TO_THINKING_LEVEL[parsed.effort] : "medium";
+    if (!group.byLevel.has(level)) {
+      group.byLevel.set(level, def);
+    }
+    if (isDefaultVariantName(def.name)) {
+      group.defaultDef ??= def;
+    }
+  }
+
+  return [...groups.values()];
+}
+
+/**
+ * Cursor only marks "1M" on some variants of a family — `GPT-5.6 Sol 1M` but plain
+ * `GPT-5.6 Sol Fast` — so the window is decided per base id rather than per variant.
+ */
+function contextWindowsByBase(defs: readonly CursorModelDef[]): Map<string, number> {
+  const windows = new Map<string, number>();
+  for (const def of defs) {
+    const { base } = parseModelId(def.id);
+    const window = contextWindowFromName(def.name);
+    if (window > (windows.get(base) ?? 0)) {
+      windows.set(base, window);
+    }
+  }
+  return windows;
+}
+
+function pickDefault(group: Group): CursorModelDef {
+  if (group.defaultDef) return group.defaultDef;
+  for (const level of DEFAULT_LEVEL_PREFERENCE) {
+    const def = group.byLevel.get(level);
+    if (def) return def;
+  }
+  return group.fallbackDef;
+}
+
+/**
+ * Turns the CLI's flat id list into Pi models. Effort variants collapse into one
+ * model with a `thinkingLevelMap`, so Pi renders the levels this account actually
+ * has instead of a list where every effort is a separate entry.
+ */
+export function buildCatalog(defs: readonly CursorModelDef[]): Catalog {
+  const models: ProviderModelConfig[] = [];
+  const cliIds = new Map<string, { byLevel: Map<ModelThinkingLevel, string>; fallback: string }>();
+  const windows = contextWindowsByBase(defs);
+
+  for (const group of groupByFamily(defs)) {
+    const defaultDef = pickDefault(group);
+    const reasoning = group.byLevel.size > 1;
+
+    const thinkingLevelMap: ThinkingLevelMap = {};
+    const byLevel = new Map<ModelThinkingLevel, string>();
+    for (const level of THINKING_LEVELS) {
+      const def = group.byLevel.get(level);
+      // null marks a level unsupported; leaving it undefined would let Pi offer it.
+      thinkingLevelMap[level] = def ? def.id : null;
+      if (def) byLevel.set(level, def.id);
+    }
+
+    models.push({
+      id: group.canonicalId,
+      name: `${defaultDef.name} (Cursor)`,
+      reasoning,
+      ...(reasoning ? { thinkingLevelMap } : {}),
+      input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: windows.get(group.base) ?? CONTEXT_WINDOW_DEFAULT,
+      maxTokens: MAX_TOKENS,
+    });
+    cliIds.set(group.canonicalId, { byLevel, fallback: defaultDef.id });
+  }
+
+  return {
+    models,
+    resolveCliId: (canonicalId, level) => {
+      const entry = cliIds.get(canonicalId);
+      if (!entry) return canonicalId;
+      if (level) {
+        const mapped = entry.byLevel.get(level);
+        if (mapped) return mapped;
+      }
+      return entry.fallback;
+    },
+  };
 }
 
 const MODEL_LINE_RE =
@@ -177,48 +269,9 @@ export function parseAgentModelsOutput(output: string): CursorModelDef[] {
     const match = MODEL_LINE_RE.exec(trimmed);
     if (!match) continue;
     const id = match[1]?.trim();
-    const rawName = match[2]?.trim();
-    if (!id || !rawName) continue;
-    const known = STATIC_MODELS_MAP.get(id);
-    results.push({
-      id,
-      name: rawName,
-      reasoning: known?.reasoning ?? inferReasoning(id),
-      contextWindow: known?.contextWindow ?? 200000,
-      maxTokens: known?.maxTokens ?? 32768,
-    });
+    const name = match[2]?.trim();
+    if (!id || !name) continue;
+    results.push({ id, name });
   }
   return results;
-}
-
-export type ProviderModelConfig = {
-  id: string;
-  name: string;
-  reasoning: boolean;
-  input: ["text"];
-  cost: { input: 0; output: 0; cacheRead: 0; cacheWrite: 0 };
-  contextWindow: number;
-  maxTokens: number;
-};
-
-export function toProviderModels(defs: CursorModelDef[]): ProviderModelConfig[] {
-  const seen = new Set<string>();
-  const models: ProviderModelConfig[] = [];
-  for (const m of defs) {
-    const canonicalId = toCanonicalId(m.id);
-    if (canonicalId === null) continue;
-    const id = canonicalId !== m.id ? canonicalId : m.id;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    models.push({
-      id,
-      name: `${m.name} (Cursor)`,
-      reasoning: m.reasoning,
-      input: ["text"],
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: m.contextWindow,
-      maxTokens: m.maxTokens,
-    });
-  }
-  return models;
 }
