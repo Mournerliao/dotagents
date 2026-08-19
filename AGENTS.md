@@ -13,3 +13,7 @@ The repository uses the default five-role triage label vocabulary. See `docs/age
 ### Domain docs
 
 The repository uses a single-context domain documentation layout. See `docs/agents/domain.md`.
+
+### Pi extensions
+
+Pi extensions are authored in `pi/` (`@mournerliao/pi-extensions`) and installed with `pi install`, not the skills CLI. See `pi/README.md`, `docs/adr/0003-pi-extensions-package.md`, and `docs/adr/0004-own-cursor-provider.md`.

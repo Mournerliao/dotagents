@@ -1,12 +1,18 @@
 # Versioning
 
-CLI releases and skill releases are versioned independently.
+CLI releases, skill releases, and the pi-extensions package are versioned independently.
 
 ## CLI (`@mournerliao/agent-skills`)
 
 - Uses semantic versioning for installer and adapter behavior.
 - Documented in [`cli/CHANGELOG.md`](../cli/CHANGELOG.md).
 - A CLI bump does **not** imply that every skill changed.
+
+## Pi extensions (`@mournerliao/pi-extensions`)
+
+- Uses semantic versioning for the `pi/` package.
+- Documented in [`pi/CHANGELOG.md`](../pi/CHANGELOG.md).
+- Loaded with `pi install`; not versioned through the skills catalog.
 
 ## Skills
 

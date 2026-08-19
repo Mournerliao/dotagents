@@ -1,7 +1,8 @@
 # Contributing
 
 This repository is a personal-first collection of AI and agent resources.
-The skills CLI lives in `cli/` (`@mournerliao/agent-skills`). Contributions
+The skills CLI lives in `cli/` (`@mournerliao/agent-skills`). Original pi
+extensions live in `pi/` (`@mournerliao/pi-extensions`). Contributions
 are welcome through pull requests, but the maintainer retains final curation
 authority. Acceptance is not automatic.
 
@@ -13,7 +14,10 @@ authority. Acceptance is not automatic.
    hosted under `cli/skills/` with canonical metadata.
 3. **Link-only recommendation** — an upstream link without a recipe (rare;
    prefer delegated when an installer exists).
-4. **CLI / docs fixes** — changes that improve the library model, validation,
+4. **Pi extension** — an original extension under `pi/extensions/`,
+   documented in `pi/README.md`. Put testable logic in `pi/src/` when it
+   needs unit tests.
+5. **CLI / docs fixes** — changes that improve the library model, validation,
    or documented trust boundary.
 
 We do **not** accept unreviewed marketplace dumps, silent vendoring of third-party
@@ -42,10 +46,13 @@ npx @mournerliao/agent-skills record --catalog cli/catalog.json --entry-json '<c
 
 ## Validation
 
-Before opening a pull request:
+Before opening a pull request, install each package then run its checks:
 
 ```bash
+npm install --prefix cli
+npm install --prefix pi
 npm run ci --prefix cli
+npm run ci --prefix pi
 ```
 
 ## Pull request templates

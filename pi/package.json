@@ -1,0 +1,54 @@
+{
+  "name": "@mournerliao/pi-extensions",
+  "version": "0.1.0",
+  "description": "Personal pi-coding-agent extensions from the dotagents collection, including a Cursor Agent CLI provider",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "extensions",
+    "src",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types test/*.test.ts",
+    "ci": "npm run typecheck && npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mournerliao/dotagents.git",
+    "directory": "pi"
+  },
+  "homepage": "https://github.com/Mournerliao/dotagents/tree/main/pi",
+  "bugs": {
+    "url": "https://github.com/Mournerliao/dotagents/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-coding-agent",
+    "extensions",
+    "cursor"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/cursor-provider.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "^0.84.2",
+    "@earendil-works/pi-coding-agent": "^0.84.2",
+    "@types/node": "^22.0.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

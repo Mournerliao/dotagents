@@ -1,6 +1,6 @@
 # Domain context
 
-This glossary describes the **skills** capability library (`cli/`, published as `@mournerliao/agent-skills`). The repository around it is a personal collection of AI and agent resources; other kinds may appear as sibling directories.
+This glossary describes the **skills** capability library (`cli/`, published as `@mournerliao/agent-skills`). The repository around it is a personal collection of AI and agent resources; other kinds may appear as sibling directories (`pi/` for original pi-coding-agent extensions).
 
 Personal tool library for syncing a curated set of agent capabilities (skills first; other capability kinds later) across machines, with one-shot install, update, and remove.
 
@@ -9,6 +9,8 @@ Personal tool library for syncing a curated set of agent capabilities (skills fi
 | Term | Meaning |
 |------|---------|
 | Personal tool library | This project's purpose: a personal, curated sync surface for capabilities the owner uses across machines — not a public skills marketplace. |
+| Pi package | An installable bundle of original pi-coding-agent extensions in `pi/`. Machines load it with `pi install`, not the skills CLI. |
+| Cursor provider | A pi custom provider that uses the owner's Cursor subscription as the model backend by spawning Cursor Agent CLI. |
 | Capability kind | The type of a sync-set entry (e.g. `skill` now; `mcp` and others later). The catalog and CLI are shaped to allow new kinds without redesigning the library model; only `skill` is implemented in the near term. |
 | Sync set | The owner's curated library of capabilities recorded in this project — what exists and how it can be obtained. It does **not** record which entries a given machine has installed, nor which agent or scope was chosen. |
 | Sync channel | How a machine obtains the current sync set and CLI: **npm package** is the primary consumer path; **git** is the authoring/development path. |
