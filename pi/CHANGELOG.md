@@ -2,6 +2,12 @@
 
 All notable changes to `@mournerliao/pi-cursor-provider` are documented here.
 
+## Unreleased
+
+### Changed
+
+- Internal modules were deepened: catalogue load is one call, spawn details live in the CLI module, ACP session updates are a discriminated union, and transcript decoration emit/strip share one module.
+
 ## 0.2.0 — 2026-08-20
 
 ### Changed

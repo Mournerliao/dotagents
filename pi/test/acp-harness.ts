@@ -2,8 +2,9 @@ import { EventEmitter } from "node:events";
 import { createInterface } from "node:readline";
 import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
-import type { SpawnFn } from "../src/cursor-provider/acp/session.ts";
-import type { AcpSessionUpdate, AcpUsage, PermissionParams } from "../src/cursor-provider/types.ts";
+import type { SpawnFn } from "../src/cursor-provider/agent-cli.ts";
+import type { AcpSessionUpdate, AcpUsage } from "../src/cursor-provider/acp/session.ts";
+import type { PermissionParams } from "../src/cursor-provider/consent.ts";
 
 export type AcpScript = {
   authenticateError?: string;
@@ -14,6 +15,7 @@ export type AcpScript = {
   usage?: AcpUsage;
   stopReason?: string;
   hangUntilAbort?: boolean;
+  junkParams?: unknown[];
 };
 
 export function scriptedAcp(script: AcpScript = {}): {
@@ -128,6 +130,9 @@ function startServer(
     }
     if (method === "session/prompt") {
       void (async () => {
+        for (const params of script.junkParams ?? []) {
+          send({ jsonrpc: "2.0", method: "session/update", params });
+        }
         for (const update of script.updates ?? []) {
           send({ jsonrpc: "2.0", method: "session/update", params: { sessionId: "sess-1", update } });
         }

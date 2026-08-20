@@ -10,11 +10,10 @@ import type {
   ThinkingLevel,
 } from "@earendil-works/pi-ai";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
-import { runAcpTurn, type SpawnFn } from "./acp/session.ts";
-import { decidePermission } from "./consent.ts";
-import { chunkText, formatRejected, thoughtText, toolMarker } from "./events.ts";
-import { serializeContext } from "./prompt.ts";
-import type { AcpUsage, EnvMap, PermissionParams } from "./types.ts";
+import { runAcpTurn, type AcpSessionUpdate, type AcpUsage, type SpawnFn } from "./acp/session.ts";
+import type { EnvMap } from "./agent-cli.ts";
+import { decidePermission, type PermissionParams } from "./consent.ts";
+import { formatRejected, formatToolActivity, serializeContext } from "./prompt.ts";
 
 export type { SpawnFn };
 
@@ -57,6 +56,35 @@ export function toPiUsage(usage?: AcpUsage): AssistantMessage["usage"] {
   };
 }
 
+function applyUpdate(
+  update: AcpSessionUpdate,
+  pushText: (delta: string) => void,
+  pushThinking: (delta: string) => void,
+): void {
+  switch (update.sessionUpdate) {
+    case "agent_thought_chunk": {
+      const text = update.content?.text;
+      if (text) pushThinking(text);
+      return;
+    }
+    case "agent_message_chunk": {
+      const text = update.content?.text;
+      if (text) pushText(text);
+      return;
+    }
+    case "tool_call": {
+      pushText(formatToolActivity(update.title?.trim() || "tool", update.status));
+      return;
+    }
+    case "tool_call_update": {
+      if (update.title) pushText(formatToolActivity(update.title, update.status));
+      return;
+    }
+    case "usage_update":
+      return;
+  }
+}
+
 export function streamCursorCli(
   model: Model<Api>,
   context: Context,
@@ -67,6 +95,7 @@ export function streamCursorCli(
   const now = host.now ?? Date.now;
   const workspacePath = host.workspacePath ?? process.cwd();
   const resolveCliId = host.resolveCliId ?? ((canonicalId: string) => canonicalId);
+  const env = host.env ?? process.env;
 
   void (async () => {
     const output: AssistantMessage = {
@@ -180,23 +209,10 @@ export function streamCursorCli(
         cwd: workspacePath,
         modelId: resolveCliId(model.id, options?.reasoning),
         ...(options?.signal ? { signal: options.signal } : {}),
-        onUpdate: (update) => {
-          const thought = thoughtText(update);
-          if (thought) {
-            pushThinking(thought);
-            return;
-          }
-          const text = chunkText(update);
-          if (text) {
-            pushText(text);
-            return;
-          }
-          const marker = toolMarker(update);
-          if (marker) pushText(marker);
-        },
+        onUpdate: (update) => applyUpdate(update, pushText, pushThinking),
         onPermission: answerPermission,
         onWindowUsage: (usage) => {
-          if (process.env["PI_CURSOR_ACP_DEBUG"] === "1") {
+          if (env["PI_CURSOR_ACP_DEBUG"] === "1") {
             process.stderr.write(
               `[pi-cursor-provider] usage_update ${JSON.stringify({ size: usage.size, used: usage.used, cost: usage.cost })}\n`,
             );

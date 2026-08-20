@@ -36,3 +36,21 @@ Personal tool library for syncing a curated set of agent capabilities (skills fi
 | Bundled resources | Optional skill package paths declared under `resources` (`scripts`, `references`, `templates`, `assets`) and listed in `files`. |
 | Sensitive capabilities | Declared needs that require review before install: commands, dependencies, network, secrets, permissions, write locations, and non-empty `resources.scripts`. |
 | Permission review | Concise pre-install summary of declared capabilities, bundled resources, or upstream install-recipe effects. Interactive flows prompt for acceptance; non-interactive installs require an explicit accept flag (dry-run may preview without accepting). |
+
+## Cursor provider
+
+**Model catalog**:
+The Cursor models this account can spawn, with effort variants collapsed into thinking levels.
+_Avoid_: model list, model map
+
+**ACP turn**:
+One Cursor Agent CLI `agent acp` process that handles a single Pi prompt and then ends.
+_Avoid_: ACP session (when meaning reuse across turns)
+
+**Permission prompt**:
+A Cursor CLI `session/request_permission` answered in Pi with the CLI's own options.
+_Avoid_: Pi tool_call, allowlist widening
+
+**Transcript decoration**:
+Display-only assistant text this provider inserts for Cursor tool activity, not model output.
+_Avoid_: tool_call events

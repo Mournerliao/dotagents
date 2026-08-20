@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Api, AssistantMessageEvent, Context, Model } from "@earendil-works/pi-ai";
 import { streamCursorCli, toPiUsage } from "../src/cursor-provider/stream.ts";
-import type { PermissionParams } from "../src/cursor-provider/types.ts";
+import type { PermissionParams } from "../src/cursor-provider/consent.ts";
 import { scriptedAcp } from "./acp-harness.ts";
 
 function testModel(): Model<Api> {
@@ -105,6 +105,24 @@ test("streamCursorCli renders text and thinking from session/update", async () =
   assert.equal(events.at(-1)?.type, "done");
 });
 
+test("tool_call titles become transcript decoration; status-only updates do not", async () => {
+  const { spawn } = scriptedAcp({
+    updates: [
+      { sessionUpdate: "tool_call", title: "`echo hello`", status: "pending", kind: "execute" },
+      { sessionUpdate: "tool_call_update", status: "completed", toolCallId: "x" },
+      { sessionUpdate: "tool_call_update", title: "`echo hello`", status: "completed" },
+      { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "done" } },
+    ],
+  });
+  const events = await collect(
+    streamCursorCli(testModel(), context, undefined, { spawn, workspacePath: "/tmp/ws" }),
+  );
+  const text = textOf(events);
+  assert.match(text, /⏳ `echo hello`/);
+  assert.match(text, /⏳ `echo hello` completed/);
+  assert.match(text, /done/);
+});
+
 test("streamCursorCli asks resolveCliId for session/set_model", async () => {
   const { spawn, methods } = scriptedAcp({
     updates: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "ok" } }],
@@ -165,6 +183,24 @@ test("a TUI permission prompt is answered with the selected optionId", async () 
   assert.match(textOf(events), /done/);
 });
 
+test("a TUI reject writes a blocked decoration line", async () => {
+  const { spawn, permissionOptionIds } = scriptedAcp({
+    permission: shellPermission,
+    afterPermission: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "stopped" } }],
+  });
+  const events = await collect(
+    streamCursorCli(testModel(), context, undefined, {
+      spawn,
+      workspacePath: "/tmp/ws",
+      hasUI: true,
+      select: async () => "Reject",
+    }),
+  );
+  assert.deepEqual(permissionOptionIds, ["reject-once"]);
+  assert.match(textOf(events), /⛔ `echo hello` blocked/);
+  assert.match(textOf(events), /stopped/);
+});
+
 test("without a UI the permission is rejected and a hint is streamed", async () => {
   const { spawn, permissionOptionIds } = scriptedAcp({
     permission: shellPermission,
@@ -220,5 +256,46 @@ test("usage from session/prompt is copied onto the assistant message", async () 
     assert.equal(done.message.usage.output, 10);
     assert.equal(done.message.usage.cacheRead, 20);
     assert.equal(done.message.usage.totalTokens, 90);
+  }
+});
+
+test("malformed session/update frames are ignored", async () => {
+  const { spawn } = scriptedAcp({
+    junkParams: [{ notAnUpdate: true }, { sessionId: "sess-1", update: { sessionUpdate: 1 } }, { update: { sessionUpdate: "nope" } }],
+    updates: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "ok" } }],
+  });
+  const events = await collect(
+    streamCursorCli(testModel(), context, undefined, { spawn, workspacePath: "/tmp/ws" }),
+  );
+  assert.equal(events.at(-1)?.type, "done");
+  assert.equal(textOf(events), "ok");
+});
+
+test("PI_CURSOR_ACP_DEBUG on host.env logs usage_update to stderr", async () => {
+  const { spawn } = scriptedAcp({
+    updates: [
+      { sessionUpdate: "usage_update", size: 200000, used: 1200 },
+      { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "ok" } },
+    ],
+  });
+  const chunks: string[] = [];
+  const orig = process.stderr.write.bind(process.stderr);
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    chunks.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const events = await collect(
+      streamCursorCli(testModel(), context, undefined, {
+        spawn,
+        workspacePath: "/tmp/ws",
+        env: { PI_CURSOR_ACP_DEBUG: "1" },
+      }),
+    );
+    assert.equal(events.at(-1)?.type, "done");
+    assert.match(chunks.join(""), /usage_update/);
+    assert.match(chunks.join(""), /200000/);
+  } finally {
+    process.stderr.write = orig;
   }
 });

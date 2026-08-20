@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { AssistantMessage, Context } from "@earendil-works/pi-ai";
-import { serializeContext } from "../src/cursor-provider/prompt.ts";
+import { serializeContext, formatRejected, formatToolActivity, isTranscriptMarkerLine } from "../src/cursor-provider/prompt.ts";
 
 test("serializeContext prefixes roles and placeholders images", () => {
   const context: Context = {
@@ -90,4 +90,17 @@ test("serializeContext omits an assistant turn that was only tool markers", () =
     messages: [assistantMessage('⏳ [Shell] {"command":"ls"}')],
   };
   assert.equal(serializeContext(context), "");
+});
+
+test("every marker the provider emits is stripped as transcript decoration", () => {
+  const emitted = [formatToolActivity("`ls`"), formatRejected("`cat /etc/hostname`", "Not in allowlist: cat")];
+  for (const text of emitted) {
+    const lines = text.split("\n").filter((line) => line.length > 0);
+    assert.ok(lines.length > 0);
+    for (const line of lines) {
+      assert.ok(isTranscriptMarkerLine(line), `expected a marker line: ${line}`);
+    }
+  }
+  assert.equal(isTranscriptMarkerLine("Deleted the file."), false);
+  assert.ok(isTranscriptMarkerLine("↻ Retrying this turn with --force (Cursor will auto-approve tools)."));
 });

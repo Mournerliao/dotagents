@@ -3,23 +3,19 @@ import { dirname } from "node:path";
 import type { Api, Context, Model, SimpleStreamOptions } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { runAgentLogin, runAgentLogout, runAgentModels, runAgentStatus } from "../src/cursor-provider/agent-cli.ts";
-import { catalogCachePath, loadModelDefs } from "../src/cursor-provider/catalog.ts";
-import { parseAllowArg, takeAllow } from "../src/cursor-provider/consent.ts";
-import { buildCatalog } from "../src/cursor-provider/models.ts";
+import { catalogCachePath, loadCatalog } from "../src/cursor-provider/catalog.ts";
+import { createAllowGrant, parseAllowArg } from "../src/cursor-provider/consent.ts";
 import { streamCursorCli } from "../src/cursor-provider/stream.ts";
-import type { AllowScope } from "../src/cursor-provider/types.ts";
 
 export default async function cursorProvider(pi: ExtensionAPI): Promise<void> {
-  const allowState: { scope: AllowScope } = { scope: "off" };
+  const grant = createAllowGrant();
   let turnCtx: ExtensionContext | undefined;
   let autoAllowThisTurn = false;
 
   // The grant is bound to the start of a turn so compaction cannot spend it.
   pi.on("before_agent_start", (_event, ctx) => {
     turnCtx = ctx;
-    const { autoAllow, next } = takeAllow(allowState.scope);
-    allowState.scope = next;
-    autoAllowThisTurn = autoAllow;
+    autoAllowThisTurn = grant.claimForTurn();
   });
   pi.on("agent_end", () => {
     turnCtx = undefined;
@@ -27,7 +23,7 @@ export default async function cursorProvider(pi: ExtensionAPI): Promise<void> {
   });
 
   const cachePath = catalogCachePath();
-  const { models: modelDefs } = await loadModelDefs({
+  const catalog = await loadCatalog({
     readCache: async () => {
       try {
         return await readFile(cachePath, "utf8");
@@ -42,7 +38,6 @@ export default async function cursorProvider(pi: ExtensionAPI): Promise<void> {
     fetchModels: () => runAgentModels(),
     now: Date.now,
   });
-  const catalog = buildCatalog(modelDefs);
 
   pi.registerProvider("cursor", {
     name: "Cursor",
@@ -115,7 +110,7 @@ export default async function cursorProvider(pi: ExtensionAPI): Promise<void> {
         ctx.ui.notify("Usage: /cursor-allow [once|session|off]", "error");
         return;
       }
-      allowState.scope = scope;
+      grant.set(scope);
       if (scope === "once") {
         ctx.ui.notify(
           "Next Cursor turn without a UI will auto-answer allow-once. Interactive sessions still ask.",

@@ -1,4 +1,29 @@
-import type { AllowScope, PermissionOption, PermissionParams } from "./types.ts";
+export type AllowScope = "off" | "once" | "session";
+
+export type PermissionOption = {
+  optionId: string;
+  name: string;
+  kind?: string;
+};
+
+export type PermissionContentBlock = {
+  type: string;
+  content?: { type: string; text?: string };
+};
+
+export type PermissionToolCall = {
+  toolCallId: string;
+  title?: string;
+  kind?: string;
+  status?: string;
+  content?: PermissionContentBlock[];
+};
+
+export type PermissionParams = {
+  sessionId: string;
+  toolCall: PermissionToolCall;
+  options: PermissionOption[];
+};
 
 export function takeAllow(scope: AllowScope): { autoAllow: boolean; next: AllowScope } {
   switch (scope) {
@@ -9,6 +34,28 @@ export function takeAllow(scope: AllowScope): { autoAllow: boolean; next: AllowS
     default:
       return { autoAllow: false, next: "off" };
   }
+}
+
+/**
+ * Print-mode grant bound to turn start so a compaction request cannot spend it.
+ */
+export type AllowGrant = {
+  set: (scope: AllowScope) => void;
+  claimForTurn: () => boolean;
+};
+
+export function createAllowGrant(initial: AllowScope = "off"): AllowGrant {
+  let scope: AllowScope = initial;
+  return {
+    set(next) {
+      scope = next;
+    },
+    claimForTurn() {
+      const { autoAllow, next } = takeAllow(scope);
+      scope = next;
+      return autoAllow;
+    },
+  };
 }
 
 export function parseAllowArg(args: string): AllowScope | undefined {

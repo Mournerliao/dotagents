@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  createAllowGrant,
   decidePermission,
   parseAllowArg,
   permissionLabels,
   permissionTitle,
   takeAllow,
+  type PermissionParams,
 } from "../src/cursor-provider/consent.ts";
-import type { PermissionParams } from "../src/cursor-provider/types.ts";
 
 const shellAsk: PermissionParams = {
   sessionId: "s",
@@ -29,6 +30,22 @@ test("takeAllow consumes once and keeps session", () => {
   assert.deepEqual(takeAllow("off"), { autoAllow: false, next: "off" });
   assert.deepEqual(takeAllow("once"), { autoAllow: true, next: "off" });
   assert.deepEqual(takeAllow("session"), { autoAllow: true, next: "session" });
+});
+
+test("a once grant lasts one claimForTurn; a second claim cannot spend it", () => {
+  const grant = createAllowGrant();
+  grant.set("once");
+  assert.equal(grant.claimForTurn(), true);
+  assert.equal(grant.claimForTurn(), false);
+});
+
+test("a session grant survives a later claimForTurn", () => {
+  const grant = createAllowGrant();
+  grant.set("session");
+  assert.equal(grant.claimForTurn(), true);
+  assert.equal(grant.claimForTurn(), true);
+  grant.set("off");
+  assert.equal(grant.claimForTurn(), false);
 });
 
 test("parseAllowArg accepts once session off", () => {

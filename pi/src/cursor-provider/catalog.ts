@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { STATIC_MODELS } from "./models.ts";
-import type { CursorModelDef, EnvMap } from "./types.ts";
+import type { EnvMap } from "./agent-cli.ts";
+import { buildCatalog, STATIC_MODELS, type Catalog, type CursorModelDef } from "./models.ts";
 
 export const CATALOG_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -83,4 +83,10 @@ export async function loadModelDefs(
 
   if (cached) return { models: cached.models, source: "stale-cache" };
   return { models: STATIC_MODELS, source: "static" };
+}
+
+/** Cache, CLI fetch, and id folding behind one interface for Pi start. */
+export async function loadCatalog(io: CatalogIo, ttlMs = CATALOG_TTL_MS): Promise<Catalog> {
+  const { models } = await loadModelDefs(io, ttlMs);
+  return buildCatalog(models);
 }

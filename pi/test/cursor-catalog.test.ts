@@ -5,11 +5,12 @@ import {
   catalogCachePath,
   isFresh,
   loadModelDefs,
+  loadCatalog,
   parseCatalog,
   serializeCatalog,
   type CatalogIo,
 } from "../src/cursor-provider/catalog.ts";
-import type { CursorModelDef } from "../src/cursor-provider/types.ts";
+import type { CursorModelDef } from "../src/cursor-provider/models.ts";
 
 const models: CursorModelDef[] = [{ id: "auto", name: "Auto" }];
 
@@ -113,4 +114,17 @@ test("loadModelDefs survives an unreadable cache file", async () => {
   });
   const result = await loadModelDefs(catalogIo);
   assert.equal(result.source, "cli");
+});
+
+test("loadCatalog returns Pi models and resolveCliId", async () => {
+  const { io: catalogIo } = io({
+    fetchModels: async () => [
+      { id: "claude-opus-5-thinking-high", name: "Claude Opus 5 1M Thinking" },
+      { id: "claude-opus-5-thinking-max", name: "Claude Opus 5 1M Max Thinking" },
+    ],
+  });
+  const catalog = await loadCatalog(catalogIo);
+  assert.equal(catalog.models.length, 1);
+  assert.equal(catalog.models[0]?.id, "claude-opus-5-thinking");
+  assert.equal(catalog.resolveCliId("claude-opus-5-thinking", "max"), "claude-opus-5-thinking-max");
 });

@@ -1,23 +1,87 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
+import {
+  PACKAGE_NAME,
+  PACKAGE_VERSION,
+  buildSpawnEnv,
+  resolveAgentPath,
+  resolveApiKey,
+  type EnvMap,
+  type SpawnFn,
+} from "../agent-cli.ts";
+import type { PermissionOption, PermissionParams } from "../consent.ts";
 import { AcpPeer } from "./protocol.ts";
-import { windowUsage } from "../events.ts";
-import { buildAcpArgs, buildSpawnEnv, resolveAgentPath, resolveApiKey } from "../spawn.ts";
-import type {
-  AcpPermissionOutcome,
-  AcpPromptResult,
-  AcpSessionUpdate,
-  AcpUsage,
-  EnvMap,
-  PermissionOption,
-  PermissionParams,
-} from "../types.ts";
 
-export type SpawnFn = (
-  command: string,
-  args: readonly string[],
-  options?: { stdio?: unknown; env?: NodeJS.ProcessEnv },
-) => ChildProcess;
+export type { SpawnFn };
+
+export type AcpContent = {
+  type: string;
+  text?: string;
+};
+
+export type AcpUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cachedReadTokens?: number;
+  cachedWriteTokens?: number;
+  thoughtTokens?: number;
+};
+
+export type AcpPromptResult = {
+  stopReason: string;
+  usage?: AcpUsage;
+};
+
+export type AcpMessageChunk = {
+  sessionUpdate: "agent_message_chunk";
+  content?: AcpContent;
+};
+
+export type AcpThoughtChunk = {
+  sessionUpdate: "agent_thought_chunk";
+  content?: AcpContent;
+};
+
+export type AcpToolCall = {
+  sessionUpdate: "tool_call";
+  title?: string;
+  kind?: string;
+  status?: string;
+  toolCallId?: string;
+};
+
+export type AcpToolCallUpdate = {
+  sessionUpdate: "tool_call_update";
+  title?: string;
+  kind?: string;
+  status?: string;
+  toolCallId?: string;
+};
+
+export type AcpUsageUpdate = {
+  sessionUpdate: "usage_update";
+  size?: number;
+  used?: number;
+  cost?: unknown;
+};
+
+export type AcpSessionUpdate =
+  | AcpMessageChunk
+  | AcpThoughtChunk
+  | AcpToolCall
+  | AcpToolCallUpdate
+  | AcpUsageUpdate;
+
+export type AcpPermissionOutcome =
+  | { outcome: "selected"; optionId: string }
+  | { outcome: "cancelled" };
+
+export type WindowUsage = {
+  size: number;
+  used: number;
+  cost?: unknown;
+};
 
 export type AcpTurnHost = {
   spawn?: SpawnFn;
@@ -28,7 +92,7 @@ export type AcpTurnHost = {
   signal?: AbortSignal;
   onUpdate: (update: AcpSessionUpdate) => void;
   onPermission: (params: PermissionParams) => Promise<AcpPermissionOutcome>;
-  onWindowUsage?: (usage: { size: number; used: number; cost?: unknown }) => void;
+  onWindowUsage?: (usage: WindowUsage) => void;
 };
 
 function rec(value: unknown): Record<string, unknown> | undefined {
@@ -117,11 +181,53 @@ function asPermissionParams(params: unknown): PermissionParams | undefined {
   };
 }
 
+function asContent(value: unknown): AcpContent | undefined {
+  const raw = rec(value);
+  if (!raw) return undefined;
+  return {
+    type: typeof raw["type"] === "string" ? raw["type"] : "text",
+    ...(typeof raw["text"] === "string" ? { text: raw["text"] } : {}),
+  };
+}
+
+function asToolFields(nested: Record<string, unknown>): {
+  title?: string;
+  kind?: string;
+  status?: string;
+  toolCallId?: string;
+} {
+  return {
+    ...(typeof nested["title"] === "string" ? { title: nested["title"] } : {}),
+    ...(typeof nested["kind"] === "string" ? { kind: nested["kind"] } : {}),
+    ...(typeof nested["status"] === "string" ? { status: nested["status"] } : {}),
+    ...(typeof nested["toolCallId"] === "string" ? { toolCallId: nested["toolCallId"] } : {}),
+  };
+}
+
 function asUpdate(params: unknown): AcpSessionUpdate | undefined {
   const raw = rec(params);
   const nested = rec(raw?.["update"]) ?? raw;
   if (!nested || typeof nested["sessionUpdate"] !== "string") return undefined;
-  return nested as AcpSessionUpdate;
+  const kind = nested["sessionUpdate"];
+  switch (kind) {
+    case "agent_message_chunk":
+    case "agent_thought_chunk": {
+      const content = asContent(nested["content"]);
+      return content ? { sessionUpdate: kind, content } : { sessionUpdate: kind };
+    }
+    case "tool_call":
+    case "tool_call_update":
+      return { sessionUpdate: kind, ...asToolFields(nested) };
+    case "usage_update":
+      return {
+        sessionUpdate: kind,
+        ...(typeof nested["size"] === "number" ? { size: nested["size"] } : {}),
+        ...(typeof nested["used"] === "number" ? { used: nested["used"] } : {}),
+        ...(nested["cost"] !== undefined ? { cost: nested["cost"] } : {}),
+      };
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -134,7 +240,7 @@ export async function runAcpTurn(prompt: string, host: AcpTurnHost): Promise<Acp
   const env = host.env ?? process.env;
   const agentPath = host.agentPath ?? resolveAgentPath(env);
 
-  const child = doSpawn(agentPath, buildAcpArgs(), {
+  const child = doSpawn(agentPath, ["acp"], {
     stdio: ["pipe", "pipe", "pipe"],
     env: buildSpawnEnv(env, resolveApiKey(env)) as NodeJS.ProcessEnv,
   });
@@ -153,9 +259,14 @@ export async function runAcpTurn(prompt: string, host: AcpTurnHost): Promise<Acp
       if (notification.method !== "session/update") return;
       const update = asUpdate(notification.params);
       if (!update) return;
-      const window = windowUsage(update);
-      if (window) {
-        host.onWindowUsage?.(window);
+      if (update.sessionUpdate === "usage_update") {
+        if (typeof update.size === "number" && typeof update.used === "number") {
+          host.onWindowUsage?.({
+            size: update.size,
+            used: update.used,
+            ...(update.cost !== undefined ? { cost: update.cost } : {}),
+          });
+        }
         return;
       }
       host.onUpdate(update);
@@ -208,7 +319,7 @@ export async function runAcpTurn(prompt: string, host: AcpTurnHost): Promise<Acp
     await peer.request("initialize", {
       protocolVersion: 1,
       clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
-      clientInfo: { name: "@mournerliao/pi-cursor-provider", version: "0.2.0" },
+      clientInfo: { name: PACKAGE_NAME, version: PACKAGE_VERSION },
     });
     await peer.request("authenticate", { methodId: "cursor_login" });
     const created = await peer.request("session/new", { cwd: host.cwd, mcpServers: [] });

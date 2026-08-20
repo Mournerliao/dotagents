@@ -1,5 +1,30 @@
 import type { ModelThinkingLevel, ThinkingLevel, ThinkingLevelMap } from "@earendil-works/pi-ai";
-import type { CursorEffort, CursorModelDef, ParsedModelId } from "./types.ts";
+
+export type CursorModelDef = {
+  id: string;
+  name: string;
+};
+
+/**
+ * Reasoning effort words Cursor encodes into model ids, e.g. `gpt-5.6-sol-xhigh`.
+ * `extra-high` is a spelling of `xhigh`; `none` means the model can stop reasoning.
+ */
+export type CursorEffort =
+  | "none"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "extra-high"
+  | "max";
+
+export type ParsedModelId = {
+  base: string;
+  thinking: boolean;
+  effort?: CursorEffort | undefined;
+  fast: boolean;
+};
 
 /**
  * Last-resort catalogue used only when `agent models` is unreachable and no cache

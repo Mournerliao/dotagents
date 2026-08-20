@@ -1,5 +1,27 @@
 import type { Context, ImageContent, TextContent } from "@earendil-works/pi-ai";
-import { isTranscriptMarkerLine } from "./events.ts";
+
+/**
+ * Cursor runs its own tools, so their activity reaches Pi as assistant text rather than
+ * structured tool calls. These prefixes tag those lines so the next turn's prompt can
+ * drop them instead of replaying this transcript decoration back to the model.
+ * `↻ ` is no longer emitted; it is kept so older sessions still strip the --force retry line.
+ */
+const TRANSCRIPT_MARKERS = ["⏳ ", "⛔ ", "↻ "] as const;
+
+export function isTranscriptMarkerLine(line: string): boolean {
+  return TRANSCRIPT_MARKERS.some((marker) => line.startsWith(marker));
+}
+
+export function formatToolActivity(title: string, status?: string): string {
+  const suffix = status && status !== "pending" ? ` ${status}` : "";
+  return `\n⏳ ${title}${suffix}\n`;
+}
+
+export function formatRejected(title: string, reason?: string): string {
+  return reason
+    ? `\n⛔ ${title} blocked: ${reason}\n`
+    : `\n⛔ ${title} blocked\n`;
+}
 
 function contentBlockToText(block: TextContent | ImageContent): string {
   if (block.type === "text") return block.text;
