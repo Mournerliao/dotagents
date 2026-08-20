@@ -1,111 +1,69 @@
 # @mournerliao/pi-cursor-provider
 
-Cursor Agent CLI provider for [pi](https://pi.dev). This package is the `pi/` directory of [dotagents](https://github.com/Mournerliao/dotagents). It is not part of the skills catalog; install it with `pi install`, not `agent-skills`.
+Cursor Agent CLI provider for [pi](https://pi.dev). This is the `pi/` directory of [dotagents](https://github.com/Mournerliao/dotagents). Install with `pi install`, not the skills CLI.
 
-Put original extensions in `extensions/`. Extract testable logic into `src/` when it needs unit tests.
+The backend is `agent acp`. Cursor executes tools; Pi answers `session/request_permission`.
 
 ## Install
 
-From a git checkout of this repo:
+From a git checkout:
 
 ```bash
 pi install "$(pwd)/pi"
 ```
 
-After publish:
+From npm:
 
 ```bash
 pi install npm:@mournerliao/pi-cursor-provider
 ```
 
-Try once without writing settings:
+One-shot, without writing settings:
 
 ```bash
 pi -e "$(pwd)/pi"
 ```
 
-If `@netandreus/pi-cursor-provider` is already installed, remove it first so both packages do not register the `cursor` provider:
+If `@netandreus/pi-cursor-provider` is installed, remove it first. Both packages register the `cursor` provider.
 
-```bash
-pi remove npm:@netandreus/pi-cursor-provider
-```
+## Usage
 
-Filter to one extension in `~/.pi/agent/settings.json` (path is whatever `pi install` wrote):
+`/model cursor/<id>`, for example `/model cursor/auto`.
 
-```json
-{
-  "packages": [
-    {
-      "source": "/absolute/path/to/dotagents/pi",
-      "extensions": ["extensions/cursor-provider.ts"]
-    }
-  ]
-}
-```
+### Auth
 
-## Extensions
+`agent login`, or `CURSOR_API_KEY` (passed in the environment, never on argv). In Pi: `/cursor-login`, `/cursor-status`, `/cursor-logout`.
 
-### cursor-provider
+### Models
 
-Routes Pi model requests through `agent acp` so a Cursor subscription can be used from Pi, with Cursor's permission prompts answered in the Pi TUI. Select a model with `/model cursor/<id>`, for example `/model cursor/auto`.
+`agent models` is folded so effort variants of one family become a single Pi model with a thinking-level map (`/model cursor/claude-opus-5-thinking` cycles `low` … `max`). Levels the family lacks are marked unsupported. `-thinking` and `-fast` stay separate models. Context windows follow Cursor's `1M` label, shared across a family's variants.
 
-Authentication is the CLI's job: `agent login`, or `CURSOR_API_KEY`. Inside Pi: `/cursor-login`, `/cursor-status`, `/cursor-logout`. The key is passed to the CLI through the environment, never on the command line.
+The catalogue is cached 24 hours at `${XDG_CACHE_HOME:-~/.cache}/dotagents-pi/cursor-models.json`. If the CLI is down, a stale cache is used; the last resort is `auto`.
 
-#### Models and thinking levels
+### Consent
 
-Cursor encodes reasoning effort into the model id (`gpt-5.6-sol-xhigh`, `claude-opus-5-thinking-max`) and offers a `-fast` variant of most families. This extension reads `agent models` and folds each family's effort variants into a single Pi model with a `thinkingLevelMap`, so a list of ~200 CLI ids becomes ~60 Pi models and the effort is chosen with Pi's thinking level instead of by picking a different model.
+Allowlist hits never prompt. When Cursor would ask a human, Pi shows the CLI's options. **Allow always** writes `~/.cursor/cli-config.json`.
 
-`/model cursor/claude-opus-5-thinking` then cycles through `low`, `medium`, `high`, `xhigh` and `max`; levels a family does not have are marked unsupported so Pi never offers them. The `-thinking` and `-fast` axes stay separate models because they are separate choices. Context windows come from Cursor's own `1M` label, shared across a family's variants since Cursor only labels some of them.
+Without a UI (`pi -p`), prompts are rejected unless `/cursor-allow` granted `allow-once` for this turn or session. Interactive sessions always ask.
 
-The catalogue is cached for 24 hours under `${XDG_CACHE_HOME:-~/.cache}/dotagents-pi/cursor-models.json`, because `agent models` takes several seconds and would otherwise delay every Pi start. If the CLI is unreachable, a stale cache is preferred over the built-in fallback, which is only `auto`.
-
-#### Limits
-
-Each Pi turn starts a fresh `agent acp` process and sends Pi's whole serialized context as
-one prompt, so Pi stays the source of truth across `/compact` and history edits. Handshake
-to `session/new` is about 8–9 s on this machine; most of a short turn's wall time after that
-is the model. Keeping the ACP process alive across turns is a later optimisation, not a
-change to that mapping.
-
-Token usage is copied onto the Pi message when `session/prompt` includes it. The current
-CLI often returns only `{ stopReason }`, so the footer may still show zero until Cursor
-starts filling those fields. Cost stays zero on a subscription. `PI_CURSOR_ACP_DEBUG=1`
-logs `usage_update` notifications for inspection; their `size`/`used` fields look like
-window occupancy, not billing.
-
-A two-turn replay of the same history did not include `cachedReadTokens` on this CLI, so
-cross-session prompt-cache hit rate is still unknown. Session reuse stays deferred until
-that number exists.
-
-#### Consent
-
-Cursor CLI executes tools itself. Pi answers Cursor's permission prompts instead of
-pretending those tools are Pi `tool_call`s.
-
-`agent acp` sends `session/request_permission` before a tool that Cursor would ask a human
-about. Pi shows the CLI's options in `ui.select`. Allowlist hits never prompt. Auto-review
-and `approvalMode` only change whether Cursor asks; when it asks, the request still arrives
-here. Choosing **Allow always** is Cursor writing `~/.cursor/cli-config.json`, and the
-label says so.
-
-Without a UI (`pi -p`), prompts are rejected with a hint unless `/cursor-allow` granted
-`allow-once` for this turn or session. Interactive sessions always ask; `/cursor-allow`
-does not silence the TUI.
-
-Because Cursor runs the tools, their activity arrives as assistant text (`⏳ …`). Those
-marker lines are shown but stripped from later prompts, so the model never reads this
-transcript decoration back. Thinking arrives as `agent_thought_chunk` and is rendered as
-Pi thinking blocks.
+Tool activity is shown as assistant text (`⏳ …`) and stripped from later prompts. Thinking arrives as `agent_thought_chunk`.
 
 | Command | Effect |
 |---------|--------|
+| `/cursor-login` | `agent login` (`NO_OPEN_BROWSER=1`) |
+| `/cursor-status` | `agent status` |
+| `/cursor-logout` | `agent logout` |
 | `/cursor-allow` | Next print-mode turn auto-answers `allow-once` |
 | `/cursor-allow session` | This Pi session auto-answers `allow-once` in print mode |
 | `/cursor-allow off` | Stop auto-answering |
 
-Environment: `CURSOR_AGENT_PATH` (or `AGENT_PATH`), `CURSOR_API_KEY`.
+### Environment
 
-Adapted from [`@netandreus/pi-cursor-provider`](https://github.com/netandreus/pi-cursor-provider) (MIT).
+`CURSOR_AGENT_PATH` (or `AGENT_PATH`), `CURSOR_API_KEY`. `PI_CURSOR_ACP_DEBUG=1` logs `usage_update` (window occupancy, not billing).
+
+### Limits
+
+Each turn spawns a fresh `agent acp` process and sends Pi's full serialized context. Token usage is copied when `session/prompt` includes it; this CLI often returns only `{ stopReason }`, so the footer may show zero. Cost is zero on a subscription. ACP process reuse across turns is not implemented.
 
 ## Develop
 
@@ -114,4 +72,6 @@ npm test --prefix pi
 npm run typecheck --prefix pi
 ```
 
-Requires Node.js 20+. Tests use Node's type stripping (CI uses Node 22).
+Node.js 20+ (CI uses 22). Tests use Node's type stripping.
+
+Adapted from [`@netandreus/pi-cursor-provider`](https://github.com/netandreus/pi-cursor-provider) (MIT).
