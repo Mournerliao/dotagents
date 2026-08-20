@@ -2,6 +2,34 @@
 
 All notable changes to `@mournerliao/pi-cursor-provider` are documented here.
 
+## 0.2.0 — 2026-08-20
+
+### Changed
+
+- The Cursor CLI backend is now `agent acp` (JSON-RPC over stdio), not `agent --print`.
+  Cursor permission prompts arrive as `session/request_permission` and are answered from
+  Pi's selector with the CLI's own options (`allow-once`, `allow-always`, `reject-once`,
+  or model-authored questions). Allowlist hits never prompt. `--force` retry is gone.
+- `/cursor-allow` only auto-answers `allow-once` when there is no UI (print mode). An
+  interactive session always asks. `allow-always` is labelled as writing
+  `~/.cursor/cli-config.json`.
+- Thinking deltas from `agent_thought_chunk` are rendered as Pi thinking blocks.
+- The prompt is sent on stdin, so the 256 KB argv cap and `/compact` refusal for oversized
+  context are gone.
+
+### Added
+
+- `session/prompt` token usage is mapped onto Pi's `AssistantMessage.usage` when the CLI
+  includes it (`inputTokens`, `outputTokens`, `cachedReadTokens`, `cachedWriteTokens`,
+  `thoughtTokens`). Cost stays zero. `usage_update` notifications are logged only when
+  `PI_CURSOR_ACP_DEBUG=1`, because this CLI version currently omits token counts on most
+  turns.
+
+### Removed
+
+- `--print` NDJSON parsing, `--force` one-turn retry, and the confirmation that asked to
+  re-run an entire spawn.
+
 ## 0.1.0 — 2026-08-19
 
 ### Added

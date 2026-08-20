@@ -4,27 +4,26 @@ import type { Api, Context, Model, SimpleStreamOptions } from "@earendil-works/p
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { runAgentLogin, runAgentLogout, runAgentModels, runAgentStatus } from "../src/cursor-provider/agent-cli.ts";
 import { catalogCachePath, loadModelDefs } from "../src/cursor-provider/catalog.ts";
-import { parseForceArg, takeForce } from "../src/cursor-provider/consent.ts";
+import { parseAllowArg, takeAllow } from "../src/cursor-provider/consent.ts";
 import { buildCatalog } from "../src/cursor-provider/models.ts";
 import { streamCursorCli } from "../src/cursor-provider/stream.ts";
-import type { ForceScope } from "../src/cursor-provider/types.ts";
+import type { AllowScope } from "../src/cursor-provider/types.ts";
 
 export default async function cursorProvider(pi: ExtensionAPI): Promise<void> {
-  const forceState: { scope: ForceScope } = { scope: "off" };
+  const allowState: { scope: AllowScope } = { scope: "off" };
   let turnCtx: ExtensionContext | undefined;
-  let forceThisTurn = false;
+  let autoAllowThisTurn = false;
 
-  // Deciding force once per turn keeps a `once` grant from being spent by an
-  // automatic compaction request, which streams through this same provider.
+  // The grant is bound to the start of a turn so compaction cannot spend it.
   pi.on("before_agent_start", (_event, ctx) => {
     turnCtx = ctx;
-    const { force, next } = takeForce(forceState.scope);
-    forceState.scope = next;
-    forceThisTurn = force;
+    const { autoAllow, next } = takeAllow(allowState.scope);
+    allowState.scope = next;
+    autoAllowThisTurn = autoAllow;
   });
   pi.on("agent_end", () => {
     turnCtx = undefined;
-    forceThisTurn = false;
+    autoAllowThisTurn = false;
   });
 
   const cachePath = catalogCachePath();
@@ -54,12 +53,17 @@ export default async function cursorProvider(pi: ExtensionAPI): Promise<void> {
     streamSimple: (model: Model<Api>, context: Context, options?: SimpleStreamOptions) => {
       const host = {
         hasUI: turnCtx?.hasUI ?? false,
-        force: forceThisTurn,
+        autoAllow: autoAllowThisTurn,
         resolveCliId: catalog.resolveCliId,
       };
-      return streamCursorCli(model, context, options, turnCtx?.hasUI
-        ? { ...host, confirm: (title, message) => turnCtx!.ui.confirm(title, message) }
-        : host);
+      return streamCursorCli(
+        model,
+        context,
+        options,
+        turnCtx?.hasUI
+          ? { ...host, select: (title, choices) => turnCtx!.ui.select(title, choices) }
+          : host,
+      );
     },
   });
 
@@ -104,20 +108,26 @@ export default async function cursorProvider(pi: ExtensionAPI): Promise<void> {
   });
 
   pi.registerCommand("cursor-allow", {
-    description: "Allow Cursor CLI tools for the next turn, this session, or turn off (once|session|off)",
+    description: "In print mode, auto-answer Cursor permission prompts with allow-once (once|session|off)",
     handler: async (args, ctx) => {
-      const scope = parseForceArg(args);
+      const scope = parseAllowArg(args);
       if (!scope) {
         ctx.ui.notify("Usage: /cursor-allow [once|session|off]", "error");
         return;
       }
-      forceState.scope = scope;
+      allowState.scope = scope;
       if (scope === "once") {
-        ctx.ui.notify("Next Cursor turn will spawn with --force. This does not edit cli-config.json.", "info");
+        ctx.ui.notify(
+          "Next Cursor turn without a UI will auto-answer allow-once. Interactive sessions still ask.",
+          "info",
+        );
       } else if (scope === "session") {
-        ctx.ui.notify("This Pi session will spawn Cursor with --force until /cursor-allow off.", "info");
+        ctx.ui.notify(
+          "This Pi session will auto-answer allow-once when there is no UI. Interactive sessions still ask.",
+          "info",
+        );
       } else {
-        ctx.ui.notify("Cursor --force is off. Blocked tools can still prompt for a one-turn retry.", "info");
+        ctx.ui.notify("Print-mode auto-allow is off. Permission prompts without a UI will be rejected.", "info");
       }
     },
   });

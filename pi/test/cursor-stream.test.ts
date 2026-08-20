@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import { EventEmitter } from "node:events";
-import { PassThrough } from "node:stream";
 import test from "node:test";
 import type { Api, AssistantMessageEvent, Context, Model } from "@earendil-works/pi-ai";
-import type { ChildProcess } from "node:child_process";
-import { MAX_PROMPT_BYTES } from "../src/cursor-provider/spawn.ts";
-import { streamCursorCli, type SpawnFn } from "../src/cursor-provider/stream.ts";
+import { streamCursorCli, toPiUsage } from "../src/cursor-provider/stream.ts";
+import type { PermissionParams } from "../src/cursor-provider/types.ts";
+import { scriptedAcp } from "./acp-harness.ts";
 
 function testModel(): Model<Api> {
   return {
@@ -23,59 +21,24 @@ function testModel(): Model<Api> {
 }
 
 const context: Context = {
-  messages: [{ role: "user", content: "delete the secret file", timestamp: 1 }],
+  messages: [{ role: "user", content: "hello", timestamp: 1 }],
 };
 
-function assistantLine(text: string): string {
-  return JSON.stringify({
-    type: "assistant",
-    message: { role: "assistant", content: [{ type: "text", text }] },
-    session_id: "s",
-  });
-}
-
-function toolLine(
-  subtype: "started" | "completed",
-  key: string,
-  payload: Record<string, unknown>,
-): string {
-  return JSON.stringify({
-    type: "tool_call",
-    subtype,
-    tool_call: { [key]: payload },
-  });
-}
-
-function fakeChild(lines: string[], exitCode = 0): ChildProcess {
-  const stdout = new PassThrough();
-  const stderr = new PassThrough();
-  const child = new EventEmitter() as ChildProcess;
-  child.stdout = stdout;
-  child.stderr = stderr;
-  child.kill = () => true;
-  stdout.on("end", () => {
-    setImmediate(() => child.emit("close", exitCode));
-  });
-  queueMicrotask(() => {
-    for (const line of lines) stdout.write(`${line}\n`);
-    stdout.end();
-    stderr.end();
-  });
-  return child;
-}
-
-function spawnFrom(runs: Array<{ lines: string[]; exitCode?: number }>): { spawn: SpawnFn; args: string[][] } {
-  const captured: string[][] = [];
-  let i = 0;
-  const spawn: SpawnFn = (_cmd, args) => {
-    const run = runs[i];
-    i += 1;
-    if (!run) throw new Error("unexpected spawn");
-    captured.push([...args]);
-    return fakeChild(run.lines, run.exitCode ?? 0);
-  };
-  return { spawn, args: captured };
-}
+const shellPermission: PermissionParams = {
+  sessionId: "sess-1",
+  toolCall: {
+    toolCallId: "t1",
+    title: "`echo hello`",
+    kind: "execute",
+    status: "pending",
+    content: [{ type: "content", content: { type: "text", text: "Not in allowlist: echo" } }],
+  },
+  options: [
+    { optionId: "allow-once", name: "Allow once", kind: "allow_once" },
+    { optionId: "allow-always", name: "Allow always", kind: "allow_always" },
+    { optionId: "reject-once", name: "Reject", kind: "reject_once" },
+  ],
+};
 
 async function collect(stream: AsyncIterable<AssistantMessageEvent>): Promise<AssistantMessageEvent[]> {
   const events: AssistantMessageEvent[] = [];
@@ -90,17 +53,62 @@ function textOf(events: AssistantMessageEvent[]): string {
     .join("");
 }
 
-test("streamCursorCli renders assistant text from NDJSON", async () => {
-  const { spawn } = spawnFrom([{ lines: [assistantLine("hello from cursor")] }]);
+function thinkingOf(events: AssistantMessageEvent[]): string {
+  return events
+    .filter((e) => e.type === "thinking_delta")
+    .map((e) => (e.type === "thinking_delta" ? e.delta : ""))
+    .join("");
+}
+
+test("toPiUsage keeps cache tokens disjoint from input and leaves cost at zero", () => {
+  assert.deepEqual(
+    toPiUsage({
+      inputTokens: 100,
+      outputTokens: 20,
+      totalTokens: 120,
+      cachedReadTokens: 40,
+      cachedWriteTokens: 10,
+      thoughtTokens: 5,
+    }),
+    {
+      input: 50,
+      output: 20,
+      cacheRead: 40,
+      cacheWrite: 10,
+      reasoning: 5,
+      totalTokens: 120,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+  );
+});
+
+test("streamCursorCli renders text and thinking from session/update", async () => {
+  const { spawn, argv, methods } = scriptedAcp({
+    updates: [
+      { sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "considering" } },
+      { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "hello from acp" } },
+    ],
+  });
   const events = await collect(
     streamCursorCli(testModel(), context, undefined, { spawn, workspacePath: "/tmp/ws" }),
   );
+  assert.deepEqual(argv, [["acp"]]);
+  assert.deepEqual(methods, [
+    "initialize",
+    "authenticate",
+    "session/new",
+    "session/set_model",
+    "session/prompt",
+  ]);
+  assert.equal(thinkingOf(events), "considering");
+  assert.match(textOf(events), /hello from acp/);
   assert.equal(events.at(-1)?.type, "done");
-  assert.match(textOf(events), /hello from cursor/);
 });
 
-test("streamCursorCli asks resolveCliId for the id the CLI should run", async () => {
-  const { spawn, args } = spawnFrom([{ lines: [assistantLine("ok")] }]);
+test("streamCursorCli asks resolveCliId for session/set_model", async () => {
+  const { spawn, methods } = scriptedAcp({
+    updates: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "ok" } }],
+  });
   await collect(
     streamCursorCli(testModel(), context, { reasoning: "max" }, {
       spawn,
@@ -108,95 +116,109 @@ test("streamCursorCli asks resolveCliId for the id the CLI should run", async ()
       resolveCliId: (id, level) => `${id}-${level ?? "default"}`,
     }),
   );
-  const modelIndex = args[0]?.indexOf("--model") ?? -1;
-  assert.ok(modelIndex >= 0);
-  assert.equal(args[0]?.[modelIndex + 1], "auto-max");
+  assert.ok(methods.includes("session/set_model"));
 });
 
-test("streamCursorCli spawns with --force when the turn was already granted it", async () => {
-  const { spawn, args } = spawnFrom([{ lines: [assistantLine("ok")] }]);
-  await collect(
-    streamCursorCli(testModel(), context, undefined, { spawn, workspacePath: "/tmp/ws", force: true }),
-  );
-  assert.equal(args.length, 1);
-  assert.ok(args[0]?.includes("--force"));
-});
-
-test("streamCursorCli refuses a context too large for the command line", async () => {
-  const { spawn, args } = spawnFrom([]);
-  const huge: Context = {
-    messages: [{ role: "user", content: "a".repeat(MAX_PROMPT_BYTES + 1), timestamp: 1 }],
-  };
+test("a set_model failure does not fail the turn", async () => {
+  const { spawn } = scriptedAcp({
+    setModelError: "unstable",
+    updates: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "still works" } }],
+  });
   const events = await collect(
-    streamCursorCli(testModel(), huge, undefined, { spawn, workspacePath: "/tmp/ws" }),
+    streamCursorCli(testModel(), context, undefined, { spawn, workspacePath: "/tmp/ws" }),
   );
-  assert.equal(args.length, 0);
-  const last = events.at(-1);
-  assert.equal(last?.type, "error");
-  assert.match(last?.type === "error" ? (last.error.errorMessage ?? "") : "", /\/compact/);
+  assert.equal(events.at(-1)?.type, "done");
+  assert.match(textOf(events), /still works/);
 });
 
-test("streamCursorCli reports a non-zero exit even when some text arrived", async () => {
-  const { spawn } = spawnFrom([{ lines: [assistantLine("partial answer")], exitCode: 1 }]);
+test("authenticate failure fails the turn", async () => {
+  const { spawn } = scriptedAcp({ authenticateError: "login required" });
   const events = await collect(
     streamCursorCli(testModel(), context, undefined, { spawn, workspacePath: "/tmp/ws" }),
   );
   const last = events.at(-1);
   assert.equal(last?.type, "error");
-  assert.match(last?.type === "error" ? (last.error.errorMessage ?? "") : "", /exited with code 1/);
+  assert.match(last?.type === "error" ? (last.error.errorMessage ?? "") : "", /login required/);
 });
 
-test("streamCursorCli retries with --force after a confirmed rejection", async () => {
-  // A blocked tool makes the CLI exit non-zero; that must still reach the retry prompt.
-  const { spawn, args } = spawnFrom([
-    {
-      lines: [
-        toolLine("started", "deleteToolCall", { args: { path: ".env" } }),
-        toolLine("completed", "deleteToolCall", {
-          args: { path: ".env" },
-          result: { rejected: { reason: "Auto-review blocked this tool" } },
-        }),
-      ],
-      exitCode: 1,
-    },
-    { lines: [assistantLine("deleted")] },
-  ]);
-
+test("a TUI permission prompt is answered with the selected optionId", async () => {
+  const { spawn, permissionOptionIds } = scriptedAcp({
+    permission: shellPermission,
+    afterPermission: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "done" } }],
+  });
+  const titles: string[] = [];
   const events = await collect(
     streamCursorCli(testModel(), context, undefined, {
       spawn,
       workspacePath: "/tmp/ws",
       hasUI: true,
-      confirm: async () => true,
+      select: async (title, choices) => {
+        titles.push(title);
+        assert.ok(choices.includes("Allow always (writes ~/.cursor/cli-config.json)"));
+        return "Allow once";
+      },
     }),
   );
-
-  assert.equal(args.length, 2);
-  assert.ok(!args[0]?.includes("--force"));
-  assert.ok(args[1]?.includes("--force"));
-  assert.match(textOf(events), /blocked: Auto-review blocked this tool/);
-  assert.match(textOf(events), /Retrying this turn with --force/);
-  assert.match(textOf(events), /deleted/);
+  assert.deepEqual(permissionOptionIds, ["allow-once"]);
+  assert.match(titles[0] ?? "", /echo hello/);
+  assert.match(titles[0] ?? "", /Not in allowlist: echo/);
+  assert.match(textOf(events), /done/);
 });
 
-test("streamCursorCli does not retry when confirm is declined", async () => {
-  const { spawn, args } = spawnFrom([
-    {
-      lines: [
-        toolLine("completed", "deleteToolCall", {
-          args: { path: ".env" },
-          result: { rejected: { reason: "blocked" } },
-        }),
-      ],
-    },
-  ]);
+test("without a UI the permission is rejected and a hint is streamed", async () => {
+  const { spawn, permissionOptionIds } = scriptedAcp({
+    permission: shellPermission,
+    afterPermission: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "refused" } }],
+  });
+  const events = await collect(
+    streamCursorCli(testModel(), context, undefined, { spawn, workspacePath: "/tmp/ws", hasUI: false }),
+  );
+  assert.deepEqual(permissionOptionIds, ["reject-once"]);
+  assert.match(textOf(events), /\/cursor-allow/);
+});
+
+test("without a UI, autoAllow answers allow-once", async () => {
+  const { spawn, permissionOptionIds } = scriptedAcp({ permission: shellPermission });
   await collect(
     streamCursorCli(testModel(), context, undefined, {
       spawn,
       workspacePath: "/tmp/ws",
-      hasUI: true,
-      confirm: async () => false,
+      hasUI: false,
+      autoAllow: true,
     }),
   );
-  assert.equal(args.length, 1);
+  assert.deepEqual(permissionOptionIds, ["allow-once"]);
+});
+
+test("abort during a hung prompt ends as aborted", async () => {
+  const { spawn } = scriptedAcp({ hangUntilAbort: true });
+  const ac = new AbortController();
+  const stream = streamCursorCli(testModel(), context, { signal: ac.signal }, {
+    spawn,
+    workspacePath: "/tmp/ws",
+  });
+  const pending = collect(stream);
+  setTimeout(() => ac.abort(), 20);
+  const events = await pending;
+  const last = events.at(-1);
+  assert.equal(last?.type, "error");
+  assert.equal(last?.type === "error" ? last.reason : "", "aborted");
+});
+
+test("usage from session/prompt is copied onto the assistant message", async () => {
+  const { spawn } = scriptedAcp({
+    updates: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "ok" } }],
+    usage: { inputTokens: 80, outputTokens: 10, totalTokens: 90, cachedReadTokens: 20 },
+  });
+  const events = await collect(
+    streamCursorCli(testModel(), context, undefined, { spawn, workspacePath: "/tmp/ws" }),
+  );
+  const done = events.at(-1);
+  assert.equal(done?.type, "done");
+  if (done?.type === "done") {
+    assert.equal(done.message.usage.input, 60);
+    assert.equal(done.message.usage.output, 10);
+    assert.equal(done.message.usage.cacheRead, 20);
+    assert.equal(done.message.usage.totalTokens, 90);
+  }
 });

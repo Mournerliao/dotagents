@@ -1,47 +1,10 @@
-import type { CursorStreamEvent, CursorToolCallEvent, ToolRejection } from "./types.ts";
-
-export const TOOL_NAME_MAP: Record<string, string> = {
-  shellToolCall: "Shell",
-  readToolCall: "Read",
-  editToolCall: "Edit",
-  writeToolCall: "Write",
-  deleteToolCall: "Delete",
-  grepToolCall: "Grep",
-  globToolCall: "Glob",
-  lsToolCall: "Ls",
-  todoToolCall: "Todo",
-  updateTodosToolCall: "UpdateTodos",
-  findToolCall: "Find",
-  webFetchToolCall: "WebFetch",
-  webSearchToolCall: "WebSearch",
-};
-
-export function toPiToolName(cliKey: string): string {
-  return TOOL_NAME_MAP[cliKey] ?? cliKey.replace(/ToolCall$/, "");
-}
-
-export function parseLine(line: string): CursorStreamEvent | null {
-  const trimmed = line.trim();
-  if (!trimmed) return null;
-  try {
-    return JSON.parse(trimmed) as CursorStreamEvent;
-  } catch {
-    return null;
-  }
-}
-
-export function isToolCallEvent(event: CursorStreamEvent): event is CursorToolCallEvent {
-  return event.type === "tool_call" && "subtype" in event && "tool_call" in event;
-}
-
-export function toolCallKey(event: CursorToolCallEvent): string | undefined {
-  return Object.keys(event.tool_call)[0];
-}
+import type { AcpSessionUpdate } from "./types.ts";
 
 /**
  * Cursor runs its own tools, so their activity reaches Pi as assistant text rather than
  * structured tool calls. These prefixes tag those lines so the next turn's prompt can
  * drop them instead of replaying this transcript decoration back to the model.
+ * `↻ ` is no longer emitted; it is kept so older sessions still strip the --force retry line.
  */
 export const TRANSCRIPT_MARKERS = ["⏳ ", "⛔ ", "↻ "] as const;
 
@@ -49,30 +12,52 @@ export function isTranscriptMarkerLine(line: string): boolean {
   return TRANSCRIPT_MARKERS.some((marker) => line.startsWith(marker));
 }
 
-export function formatToolStarted(toolName: string, args: Record<string, unknown>): string {
-  const argsSnippet = JSON.stringify(args);
-  const brief = argsSnippet.length > 120 ? `${argsSnippet.slice(0, 120)}…` : argsSnippet;
-  return `\n⏳ [${toolName}] ${brief}\n`;
+export function formatToolActivity(title: string, status?: string): string {
+  const suffix = status && status !== "pending" ? ` ${status}` : "";
+  return `\n⏳ ${title}${suffix}\n`;
 }
 
-export function formatRejected(rejection: ToolRejection): string {
-  return `\n⛔ [${rejection.toolName}] blocked: ${rejection.reason}\n`;
+export function formatRejected(title: string, reason?: string): string {
+  return reason
+    ? `\n⛔ ${title} blocked: ${reason}\n`
+    : `\n⛔ ${title} blocked\n`;
 }
 
-export function formatRetrying(): string {
-  return "\n↻ Retrying this turn with --force (Cursor will auto-approve tools).\n";
+export function chunkText(update: AcpSessionUpdate): string | undefined {
+  if (update.sessionUpdate !== "agent_message_chunk") return undefined;
+  const text = update.content?.text;
+  return text ? text : undefined;
 }
 
-export function extractRejection(event: CursorToolCallEvent): ToolRejection | undefined {
-  if (event.subtype !== "completed") return undefined;
-  const key = toolCallKey(event);
-  if (!key) return undefined;
-  const payload = event.tool_call[key];
-  const rejected = payload?.result?.rejected;
-  if (!rejected) return undefined;
+export function thoughtText(update: AcpSessionUpdate): string | undefined {
+  if (update.sessionUpdate !== "agent_thought_chunk") return undefined;
+  const text = update.content?.text;
+  return text ? text : undefined;
+}
+
+export function toolMarker(update: AcpSessionUpdate): string | undefined {
+  if (update.sessionUpdate === "tool_call") {
+    const title = update.title?.trim() || "tool";
+    return formatToolActivity(title, update.status);
+  }
+  if (update.sessionUpdate === "tool_call_update" && update.title) {
+    return formatToolActivity(update.title, update.status);
+  }
+  return undefined;
+}
+
+export type WindowUsage = {
+  size: number;
+  used: number;
+  cost?: unknown;
+};
+
+export function windowUsage(update: AcpSessionUpdate): WindowUsage | undefined {
+  if (update.sessionUpdate !== "usage_update") return undefined;
+  if (typeof update.size !== "number" || typeof update.used !== "number") return undefined;
   return {
-    toolName: toPiToolName(key),
-    args: payload.args ?? {},
-    reason: rejected.reason ?? "rejected",
+    size: update.size,
+    used: update.used,
+    ...(update.cost !== undefined ? { cost: update.cost } : {}),
   };
 }

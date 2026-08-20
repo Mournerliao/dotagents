@@ -1,70 +1,36 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  extractRejection,
+  chunkText,
   formatRejected,
-  formatRetrying,
-  formatToolStarted,
+  formatToolActivity,
   isTranscriptMarkerLine,
-  parseLine,
-  toPiToolName,
+  thoughtText,
+  toolMarker,
+  windowUsage,
 } from "../src/cursor-provider/events.ts";
-import type { CursorToolCallEvent } from "../src/cursor-provider/types.ts";
 
-test("toPiToolName maps known CLI keys and strips ToolCall", () => {
-  assert.equal(toPiToolName("deleteToolCall"), "Delete");
-  assert.equal(toPiToolName("mysteryToolCall"), "mystery");
+test("chunk and thought extractors only fire for their sessionUpdate", () => {
+  assert.equal(chunkText({ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "hi" } }), "hi");
+  assert.equal(thoughtText({ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "hi" } }), undefined);
+  assert.equal(thoughtText({ sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "hmm" } }), "hmm");
+  assert.equal(chunkText({ sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "hmm" } }), undefined);
 });
 
-test("parseLine ignores junk and returns objects", () => {
-  assert.equal(parseLine(""), null);
-  assert.equal(parseLine("not-json"), null);
-  assert.deepEqual(parseLine('{"type":"result","subtype":"success","duration_ms":1}'), {
-    type: "result",
-    subtype: "success",
-    duration_ms: 1,
-  });
-});
-
-test("extractRejection reads completed rejected payloads", () => {
-  const started: CursorToolCallEvent = {
-    type: "tool_call",
-    subtype: "started",
-    tool_call: { deleteToolCall: { args: { path: ".env" } } },
-  };
-  assert.equal(extractRejection(started), undefined);
-
-  const rejected: CursorToolCallEvent = {
-    type: "tool_call",
-    subtype: "completed",
-    tool_call: {
-      deleteToolCall: {
-        args: { path: ".env" },
-        result: { rejected: { reason: "Auto-review blocked this tool" } },
-      },
-    },
-  };
-  assert.deepEqual(extractRejection(rejected), {
-    toolName: "Delete",
-    args: { path: ".env" },
-    reason: "Auto-review blocked this tool",
-  });
-});
-
-test("formatters keep a short tool marker", () => {
-  assert.match(formatToolStarted("Delete", { path: ".env" }), /⏳ \[Delete\]/);
+test("tool markers come from tool_call titles, not from later status-only updates", () => {
   assert.equal(
-    formatRejected({ toolName: "Delete", args: { path: ".env" }, reason: "blocked" }),
-    "\n⛔ [Delete] blocked: blocked\n",
+    toolMarker({ sessionUpdate: "tool_call", title: "`echo hello`", status: "pending", kind: "execute" }),
+    "\n⏳ `echo hello`\n",
+  );
+  assert.equal(toolMarker({ sessionUpdate: "tool_call_update", status: "completed", toolCallId: "x" }), undefined);
+  assert.match(
+    toolMarker({ sessionUpdate: "tool_call_update", title: "`echo hello`", status: "completed" }) ?? "",
+    /⏳ `echo hello` completed/,
   );
 });
 
 test("every marker the provider emits is recognised as transcript decoration", () => {
-  const emitted = [
-    formatToolStarted("Delete", { path: ".env" }),
-    formatRejected({ toolName: "Delete", args: {}, reason: "blocked" }),
-    formatRetrying(),
-  ];
+  const emitted = [formatToolActivity("`ls`"), formatRejected("`cat /etc/hostname`", "Not in allowlist: cat")];
   for (const text of emitted) {
     const lines = text.split("\n").filter((line) => line.length > 0);
     assert.ok(lines.length > 0);
@@ -73,4 +39,13 @@ test("every marker the provider emits is recognised as transcript decoration", (
     }
   }
   assert.equal(isTranscriptMarkerLine("Deleted the file."), false);
+  assert.ok(isTranscriptMarkerLine("↻ Retrying this turn with --force (Cursor will auto-approve tools)."));
+});
+
+test("usage_update is captured for observation and not treated as text", () => {
+  assert.deepEqual(windowUsage({ sessionUpdate: "usage_update", size: 200000, used: 1200 }), {
+    size: 200000,
+    used: 1200,
+  });
+  assert.equal(chunkText({ sessionUpdate: "usage_update", size: 200000, used: 1200 }), undefined);
 });

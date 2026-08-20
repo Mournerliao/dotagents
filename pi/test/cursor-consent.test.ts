@@ -1,37 +1,96 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { decideRetry, parseForceArg, takeForce } from "../src/cursor-provider/consent.ts";
+import {
+  decidePermission,
+  parseAllowArg,
+  permissionLabels,
+  permissionTitle,
+  takeAllow,
+} from "../src/cursor-provider/consent.ts";
+import type { PermissionParams } from "../src/cursor-provider/types.ts";
 
-test("takeForce consumes once and keeps session", () => {
-  assert.deepEqual(takeForce("off"), { force: false, next: "off" });
-  assert.deepEqual(takeForce("once"), { force: true, next: "off" });
-  assert.deepEqual(takeForce("session"), { force: true, next: "session" });
+const shellAsk: PermissionParams = {
+  sessionId: "s",
+  toolCall: {
+    toolCallId: "t1",
+    title: "`echo hello`",
+    kind: "execute",
+    status: "pending",
+    content: [{ type: "content", content: { type: "text", text: "Not in allowlist: echo" } }],
+  },
+  options: [
+    { optionId: "allow-once", name: "Allow once", kind: "allow_once" },
+    { optionId: "allow-always", name: "Allow always", kind: "allow_always" },
+    { optionId: "reject-once", name: "Reject", kind: "reject_once" },
+  ],
+};
+
+test("takeAllow consumes once and keeps session", () => {
+  assert.deepEqual(takeAllow("off"), { autoAllow: false, next: "off" });
+  assert.deepEqual(takeAllow("once"), { autoAllow: true, next: "off" });
+  assert.deepEqual(takeAllow("session"), { autoAllow: true, next: "session" });
 });
 
-test("parseForceArg accepts once session off", () => {
-  assert.equal(parseForceArg(""), "once");
-  assert.equal(parseForceArg("session"), "session");
-  assert.equal(parseForceArg("off"), "off");
-  assert.equal(parseForceArg("nope"), undefined);
+test("parseAllowArg accepts once session off", () => {
+  assert.equal(parseAllowArg(""), "once");
+  assert.equal(parseAllowArg("session"), "session");
+  assert.equal(parseAllowArg("off"), "off");
+  assert.equal(parseAllowArg("nope"), undefined);
 });
 
-test("decideRetry asks in TUI and hints without UI", () => {
-  const rejections = [
-    { toolName: "Delete", args: { path: ".env" }, reason: "Auto-review blocked this tool" },
-  ];
-  assert.deepEqual(decideRetry({ alreadyForced: true, rejections, hasUI: true }), { kind: "skip" });
-  assert.deepEqual(decideRetry({ alreadyForced: false, rejections: [], hasUI: true }), { kind: "skip" });
+test("permission labels keep CLI option names and warn that allow-always persists", () => {
+  const labels = permissionLabels(shellAsk.options);
+  assert.deepEqual(labels, [
+    "Allow once",
+    "Allow always (writes ~/.cursor/cli-config.json)",
+    "Reject",
+  ]);
+});
 
-  const ask = decideRetry({ alreadyForced: false, rejections, hasUI: true });
-  assert.equal(ask.kind, "ask");
-  if (ask.kind === "ask") {
-    assert.match(ask.summary, /Delete \.env/);
-    assert.match(ask.summary, /does not change ~\/\.cursor\/cli-config\.json/);
+test("permissionTitle names the tool and the CLI reason", () => {
+  assert.equal(permissionTitle(shellAsk), "`echo hello`\nNot in allowlist: echo");
+});
+
+test("with a UI the user is always asked, even if /cursor-allow is on", () => {
+  const decision = decidePermission({ hasUI: true, autoAllow: true, request: shellAsk });
+  assert.equal(decision.kind, "ask");
+  if (decision.kind === "ask") {
+    assert.equal(decision.optionIdFor("Allow once"), "allow-once");
+    assert.equal(decision.optionIdFor("Allow always (writes ~/.cursor/cli-config.json)"), "allow-always");
+    assert.equal(decision.optionIdFor("Reject"), "reject-once");
   }
+});
 
-  const skip = decideRetry({ alreadyForced: false, rejections, hasUI: false });
-  assert.equal(skip.kind, "skip");
-  if (skip.kind === "skip" && "hint" in skip) {
-    assert.match(skip.hint, /\/cursor-allow/);
+test("without a UI, /cursor-allow auto-answers allow-once", () => {
+  const decision = decidePermission({ hasUI: false, autoAllow: true, request: shellAsk });
+  assert.deepEqual(decision, { kind: "selected", optionId: "allow-once" });
+});
+
+test("without a UI and no grant, the call is rejected with a hint", () => {
+  const decision = decidePermission({ hasUI: false, autoAllow: false, request: shellAsk });
+  assert.equal(decision.kind, "selected");
+  if (decision.kind === "selected") {
+    assert.equal(decision.optionId, "reject-once");
+    assert.ok(decision.hint);
+    assert.match(decision.hint ?? "", /\/cursor-allow/);
+    assert.match(decision.hint ?? "", /echo hello/);
+  }
+});
+
+test("model-authored askQuestion options pass through unchanged", () => {
+  const ask: PermissionParams = {
+    sessionId: "s",
+    toolCall: { toolCallId: "q1", title: "Which approach?", kind: "other", status: "pending" },
+    options: [
+      { optionId: "a", name: "Rewrite in place", kind: "allow_once" },
+      { optionId: "b", name: "Add a wrapper", kind: "allow_once" },
+      { optionId: "__ask_question_skip__", name: "Skip", kind: "reject_once" },
+    ],
+  };
+  const decision = decidePermission({ hasUI: true, autoAllow: false, request: ask });
+  assert.equal(decision.kind, "ask");
+  if (decision.kind === "ask") {
+    assert.deepEqual(decision.labels, ["Rewrite in place", "Add a wrapper", "Skip"]);
+    assert.equal(decision.optionIdFor("Add a wrapper"), "b");
   }
 });

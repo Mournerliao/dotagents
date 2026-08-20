@@ -47,7 +47,7 @@ Filter to one extension in `~/.pi/agent/settings.json` (path is whatever `pi ins
 
 ### cursor-provider
 
-Routes Pi model requests through the Cursor Agent CLI (`agent`) so a Cursor subscription can be used from Pi. Select a model with `/model cursor/<id>`, for example `/model cursor/auto`.
+Routes Pi model requests through `agent acp` so a Cursor subscription can be used from Pi, with Cursor's permission prompts answered in the Pi TUI. Select a model with `/model cursor/<id>`, for example `/model cursor/auto`.
 
 Authentication is the CLI's job: `agent login`, or `CURSOR_API_KEY`. Inside Pi: `/cursor-login`, `/cursor-status`, `/cursor-logout`. The key is passed to the CLI through the environment, never on the command line.
 
@@ -61,27 +61,47 @@ The catalogue is cached for 24 hours under `${XDG_CACHE_HOME:-~/.cache}/dotagent
 
 #### Limits
 
-The CLI takes the prompt as a command-line argument, so the whole serialized context has to fit in one argv entry. Past 256 KB this provider fails the turn with a message pointing at `/compact` rather than letting the spawn die with an opaque `E2BIG`. Sessions are not resumed (`--resume`) on purpose: Pi owns the context and rewrites it when compacting, so a Cursor-side session would drift from what Pi believes it sent.
+Each Pi turn starts a fresh `agent acp` process and sends Pi's whole serialized context as
+one prompt, so Pi stays the source of truth across `/compact` and history edits. Handshake
+to `session/new` is about 8–9 s on this machine; most of a short turn's wall time after that
+is the model. Keeping the ACP process alive across turns is a later optimisation, not a
+change to that mapping.
 
-Token usage is reported as zero. The CLI does not expose it, and cost is zero on a subscription anyway, but that also means Pi's context accounting for these models is not driven by real numbers.
+Token usage is copied onto the Pi message when `session/prompt` includes it. The current
+CLI often returns only `{ stopReason }`, so the footer may still show zero until Cursor
+starts filling those fields. Cost stays zero on a subscription. `PI_CURSOR_ACP_DEBUG=1`
+logs `usage_update` notifications for inspection; their `size`/`used` fields look like
+window occupancy, not billing.
+
+A two-turn replay of the same history did not include `cachedReadTokens` on this CLI, so
+cross-session prompt-cache hit rate is still unknown. Session reuse stays deferred until
+that number exists.
 
 #### Consent
 
-Cursor CLI executes tools itself. Pi only observes the stream. `--print` has no approval card, so this extension does **not** write `Delete(**)` into `~/.cursor/cli-config.json`.
+Cursor CLI executes tools itself. Pi answers Cursor's permission prompts instead of
+pretending those tools are Pi `tool_call`s.
 
-When a tool is rejected (Auto-review, allowlist, and similar), the TUI asks whether to retry **this turn** with `--force`. That is one spawn. It is not a lasting Cursor permission. Without a UI, the stream records the rejection and tells you to run `/cursor-allow`.
+`agent acp` sends `session/request_permission` before a tool that Cursor would ask a human
+about. Pi shows the CLI's options in `ui.select`. Allowlist hits never prompt. Auto-review
+and `approvalMode` only change whether Cursor asks; when it asks, the request still arrives
+here. Choosing **Allow always** is Cursor writing `~/.cursor/cli-config.json`, and the
+label says so.
 
-Because Cursor runs the tools, their activity arrives as assistant text (`⏳ [Shell] …`). Those marker lines are shown but stripped from later prompts, so the model never reads this transcript decoration back.
+Without a UI (`pi -p`), prompts are rejected with a hint unless `/cursor-allow` granted
+`allow-once` for this turn or session. Interactive sessions always ask; `/cursor-allow`
+does not silence the TUI.
 
-A `once` grant is decided when a turn starts, not when a request is streamed, so an automatic compaction cannot spend it.
+Because Cursor runs the tools, their activity arrives as assistant text (`⏳ …`). Those
+marker lines are shown but stripped from later prompts, so the model never reads this
+transcript decoration back. Thinking arrives as `agent_thought_chunk` and is rendered as
+Pi thinking blocks.
 
 | Command | Effect |
 |---------|--------|
-| `/cursor-allow` | Next turn spawns with `--force` |
-| `/cursor-allow session` | This Pi session spawns with `--force` |
-| `/cursor-allow off` | Stop adding `--force` |
-
-`--force` auto-approves Cursor tools for that spawn, including ones Auto-review would block. Already-applied edits may run again on a retry.
+| `/cursor-allow` | Next print-mode turn auto-answers `allow-once` |
+| `/cursor-allow session` | This Pi session auto-answers `allow-once` in print mode |
+| `/cursor-allow off` | Stop auto-answering |
 
 Environment: `CURSOR_AGENT_PATH` (or `AGENT_PATH`), `CURSOR_API_KEY`.
 

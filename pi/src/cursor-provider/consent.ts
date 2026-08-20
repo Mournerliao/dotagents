@@ -1,17 +1,17 @@
-import type { ForceScope, ToolRejection } from "./types.ts";
+import type { AllowScope, PermissionOption, PermissionParams } from "./types.ts";
 
-export function takeForce(scope: ForceScope): { force: boolean; next: ForceScope } {
+export function takeAllow(scope: AllowScope): { autoAllow: boolean; next: AllowScope } {
   switch (scope) {
     case "once":
-      return { force: true, next: "off" };
+      return { autoAllow: true, next: "off" };
     case "session":
-      return { force: true, next: "session" };
+      return { autoAllow: true, next: "session" };
     default:
-      return { force: false, next: "off" };
+      return { autoAllow: false, next: "off" };
   }
 }
 
-export function parseForceArg(args: string): ForceScope | undefined {
+export function parseAllowArg(args: string): AllowScope | undefined {
   const mode = args.trim().toLowerCase();
   if (mode === "" || mode === "once") return "once";
   if (mode === "session") return "session";
@@ -19,51 +19,85 @@ export function parseForceArg(args: string): ForceScope | undefined {
   return undefined;
 }
 
-function summarizeArgs(args: Record<string, unknown>): string {
-  const path = args["path"] ?? args["targetDirectory"] ?? args["command"];
-  return path == null ? "" : String(path);
+function isAllowAlways(option: PermissionOption): boolean {
+  return option.optionId === "allow-always" || option.kind === "allow_always";
 }
 
-export function formatConfirmSummary(rejections: readonly ToolRejection[]): string {
-  const lines = rejections.map((r) => {
-    const target = summarizeArgs(r.args);
-    return `- ${r.toolName}${target ? ` ${target}` : ""}: ${r.reason}`;
-  });
-  return [
-    "Cursor CLI blocked the following tool(s).",
-    "",
-    ...lines,
-    "",
-    "Retry this turn with --force? Already-applied edits may run again.",
-    "This is one spawn only; it does not change ~/.cursor/cli-config.json.",
-  ].join("\n");
+export function displayLabel(option: PermissionOption): string {
+  if (isAllowAlways(option)) {
+    return `${option.name} (writes ~/.cursor/cli-config.json)`;
+  }
+  return option.name;
 }
 
-export function formatNoUiHint(rejections: readonly ToolRejection[]): string {
-  return [
-    "",
-    "Cursor CLI blocked tool(s) and there is no UI to confirm a retry:",
-    ...rejections.map((r) => `- ${r.toolName}: ${r.reason}`),
-    "Run /cursor-allow then retry, or confirm in a TUI session.",
-    "",
-  ].join("\n");
+export function permissionLabels(options: readonly PermissionOption[]): string[] {
+  return options.map(displayLabel);
 }
 
-export type RetryDecision =
-  | { kind: "ask"; summary: string }
-  | { kind: "skip"; hint: string }
-  | { kind: "skip" };
+function contentText(request: PermissionParams): string {
+  const blocks = request.toolCall.content ?? [];
+  return blocks
+    .map((block) => block.content?.text?.trim() ?? "")
+    .filter(Boolean)
+    .join("\n");
+}
 
-export function decideRetry(input: {
-  alreadyForced: boolean;
-  rejections: readonly ToolRejection[];
+export function permissionTitle(request: PermissionParams): string {
+  const title = request.toolCall.title?.trim() || "Cursor tool";
+  const detail = contentText(request);
+  return detail ? `${title}\n${detail}` : title;
+}
+
+export type PermissionDecision =
+  | {
+      kind: "ask";
+      title: string;
+      labels: string[];
+      optionIdFor: (label: string) => string | undefined;
+    }
+  | { kind: "selected"; optionId: string; hint?: string };
+
+function optionIdNamed(options: readonly PermissionOption[], id: string): string {
+  return options.some((option) => option.optionId === id) ? id : (options[0]?.optionId ?? id);
+}
+
+export function decidePermission(input: {
   hasUI: boolean;
-}): RetryDecision {
-  if (input.alreadyForced || input.rejections.length === 0) {
-    return { kind: "skip" };
+  autoAllow: boolean;
+  request: PermissionParams;
+}): PermissionDecision {
+  const options = input.request.options;
+  const labels = permissionLabels(options);
+  const title = permissionTitle(input.request);
+
+  if (input.hasUI) {
+    return {
+      kind: "ask",
+      title,
+      labels,
+      optionIdFor: (label) => {
+        const index = labels.indexOf(label);
+        return index >= 0 ? options[index]?.optionId : undefined;
+      },
+    };
   }
-  if (!input.hasUI) {
-    return { kind: "skip", hint: formatNoUiHint(input.rejections) };
+
+  if (input.autoAllow) {
+    return { kind: "selected", optionId: optionIdNamed(options, "allow-once") };
   }
-  return { kind: "ask", summary: formatConfirmSummary(input.rejections) };
+
+  return {
+    kind: "selected",
+    optionId: optionIdNamed(options, "reject-once"),
+    hint: [
+      "",
+      "Cursor asked for approval and there is no UI to answer:",
+      title
+        .split("\n")
+        .map((line) => `- ${line}`)
+        .join("\n"),
+      "Run /cursor-allow then retry, or confirm in a TUI session.",
+      "",
+    ].join("\n"),
+  };
 }

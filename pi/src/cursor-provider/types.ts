@@ -24,44 +24,66 @@ export type ParsedModelId = {
   fast: boolean;
 };
 
-export type CursorToolCallPayload = {
-  args: Record<string, unknown>;
-  result?: {
-    success?: Record<string, unknown>;
-    rejected?: { reason?: string };
-    error?: { message?: string };
-  };
-};
-
-export type CursorAssistantEvent = {
-  type: "assistant";
-  message: { role: "assistant"; content: Array<{ type: "text"; text: string }> };
-};
-
-export type CursorToolCallEvent = {
-  type: "tool_call";
-  subtype: "started" | "completed";
-  tool_call: Record<string, CursorToolCallPayload>;
-};
-
-export type CursorResultEvent = {
-  type: "result";
-  subtype: string;
-  duration_ms: number;
-};
-
-export type CursorStreamEvent =
-  | CursorAssistantEvent
-  | CursorToolCallEvent
-  | CursorResultEvent
-  | { type: string };
-
-export type ToolRejection = {
-  toolName: string;
-  args: Record<string, unknown>;
-  reason: string;
-};
-
-export type ForceScope = "off" | "once" | "session";
+export type AllowScope = "off" | "once" | "session";
 
 export type EnvMap = Record<string, string | undefined>;
+
+export type PermissionOption = {
+  optionId: string;
+  name: string;
+  kind?: string;
+};
+
+export type PermissionContentBlock = {
+  type: string;
+  content?: { type: string; text?: string };
+};
+
+export type PermissionToolCall = {
+  toolCallId: string;
+  title?: string;
+  kind?: string;
+  status?: string;
+  content?: PermissionContentBlock[];
+};
+
+export type PermissionParams = {
+  sessionId: string;
+  toolCall: PermissionToolCall;
+  options: PermissionOption[];
+};
+
+export type AcpContent = {
+  type: string;
+  text?: string;
+};
+
+export type AcpUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cachedReadTokens?: number;
+  cachedWriteTokens?: number;
+  thoughtTokens?: number;
+};
+
+export type AcpPromptResult = {
+  stopReason: string;
+  usage?: AcpUsage;
+};
+
+export type AcpSessionUpdate = {
+  sessionUpdate: string;
+  content?: AcpContent;
+  title?: string;
+  kind?: string;
+  status?: string;
+  toolCallId?: string;
+  size?: number;
+  used?: number;
+  cost?: unknown;
+};
+
+export type AcpPermissionOutcome =
+  | { outcome: "selected"; optionId: string }
+  | { outcome: "cancelled" };
