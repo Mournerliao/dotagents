@@ -2,9 +2,9 @@ import { EventEmitter } from "node:events";
 import { createInterface } from "node:readline";
 import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
-import type { SpawnFn } from "../src/cursor-provider/agent-cli.ts";
-import type { AcpSessionUpdate, AcpUsage } from "../src/cursor-provider/acp/session.ts";
-import type { PermissionParams } from "../src/cursor-provider/consent.ts";
+import type { SpawnFn } from "../src/agent-cli.ts";
+import type { AcpSessionUpdate, AcpUsage } from "../src/acp/session.ts";
+import type { PermissionParams } from "../src/consent.ts";
 
 export type AcpScript = {
   authenticateError?: string;

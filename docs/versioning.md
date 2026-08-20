@@ -10,8 +10,8 @@ CLI releases, skill releases, and the pi Cursor provider package are versioned i
 
 ## Pi Cursor provider (`@mournerliao/pi-cursor-provider`)
 
-- Uses semantic versioning for the `pi/` package.
-- Documented in [`pi/CHANGELOG.md`](../pi/CHANGELOG.md).
+- Uses semantic versioning for that npm package (`pi/cursor-provider/`).
+- Documented in [`pi/cursor-provider/CHANGELOG.md`](../pi/cursor-provider/CHANGELOG.md).
 - Loaded with `pi install`; not versioned through the skills catalog.
 
 ## Skills

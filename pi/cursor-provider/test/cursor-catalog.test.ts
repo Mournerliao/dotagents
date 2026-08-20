@@ -9,8 +9,8 @@ import {
   parseCatalog,
   serializeCatalog,
   type CatalogIo,
-} from "../src/cursor-provider/catalog.ts";
-import type { CursorModelDef } from "../src/cursor-provider/models.ts";
+} from "../src/catalog.ts";
+import type { CursorModelDef } from "../src/models.ts";
 
 const models: CursorModelDef[] = [{ id: "auto", name: "Auto" }];
 

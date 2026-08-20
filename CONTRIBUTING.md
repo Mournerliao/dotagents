@@ -2,7 +2,7 @@
 
 This repository is a personal-first collection of AI and agent resources.
 The skills CLI lives in `cli/` (`@mournerliao/agent-skills`). Original pi
-extensions live in `pi/` (`@mournerliao/pi-cursor-provider`). Contributions
+extensions live under `pi/<name>/`, one npm package each. Contributions
 are welcome through pull requests, but the maintainer retains final curation
 authority. Acceptance is not automatic.
 
@@ -14,9 +14,9 @@ authority. Acceptance is not automatic.
    hosted under `cli/skills/` with canonical metadata.
 3. **Link-only recommendation** — an upstream link without a recipe (rare;
    prefer delegated when an installer exists).
-4. **Pi extension** — an original extension under `pi/extensions/`,
-   documented in `pi/README.md`. Put testable logic in `pi/src/` when it
-   needs unit tests.
+4. **Pi extension** — an original extension under `pi/<name>/`,
+   documented from [pi/README.md](pi/README.md). Put testable logic in
+   that package's `src/` when it needs unit tests.
 5. **CLI / docs fixes** — changes that improve the library model, validation,
    or documented trust boundary.
 
@@ -50,9 +50,9 @@ Before opening a pull request, install each package then run its checks:
 
 ```bash
 npm install --prefix cli
-npm install --prefix pi
+npm install --prefix pi/cursor-provider
 npm run ci --prefix cli
-npm run ci --prefix pi
+npm run ci --prefix pi/cursor-provider
 ```
 
 ## Pull request templates

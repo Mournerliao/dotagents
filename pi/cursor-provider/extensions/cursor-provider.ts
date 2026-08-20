@@ -2,10 +2,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Api, Context, Model, SimpleStreamOptions } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { runAgentLogin, runAgentLogout, runAgentModels, runAgentStatus } from "../src/cursor-provider/agent-cli.ts";
-import { catalogCachePath, loadCatalog } from "../src/cursor-provider/catalog.ts";
-import { createAllowGrant, parseAllowArg } from "../src/cursor-provider/consent.ts";
-import { streamCursorCli } from "../src/cursor-provider/stream.ts";
+import { runAgentLogin, runAgentLogout, runAgentModels, runAgentStatus } from "../src/agent-cli.ts";
+import { catalogCachePath, loadCatalog } from "../src/catalog.ts";
+import { createAllowGrant, parseAllowArg } from "../src/consent.ts";
+import { streamCursorCli } from "../src/stream.ts";
 
 export default async function cursorProvider(pi: ExtensionAPI): Promise<void> {
   const grant = createAllowGrant();

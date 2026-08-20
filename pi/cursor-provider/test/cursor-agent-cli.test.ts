@@ -11,7 +11,7 @@ import {
   runAgentModels,
   runAgentStatus,
   type SpawnFn,
-} from "../src/cursor-provider/agent-cli.ts";
+} from "../src/agent-cli.ts";
 
 function scriptedCli(script: {
   stdout?: string;

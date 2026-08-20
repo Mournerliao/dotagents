@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { AssistantMessage, Context } from "@earendil-works/pi-ai";
-import { serializeContext, formatRejected, formatToolActivity, isTranscriptMarkerLine } from "../src/cursor-provider/prompt.ts";
+import { serializeContext, formatRejected, formatToolActivity, isTranscriptMarkerLine } from "../src/prompt.ts";
 
 test("serializeContext prefixes roles and placeholders images", () => {
   const context: Context = {

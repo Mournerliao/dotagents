@@ -5,7 +5,7 @@ import {
   encodeRequest,
   encodeResponse,
   parseIncoming,
-} from "../src/cursor-provider/acp/protocol.ts";
+} from "../src/acp/protocol.ts";
 
 test("parseIncoming splits responses, notifications, and server requests", () => {
   assert.equal(parseIncoming(""), undefined);

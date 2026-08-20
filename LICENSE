@@ -34,5 +34,5 @@ Each skill and catalog entry must retain its own license and attribution
 declarations. When a license is unknown, record it as `unknown` rather than
 implying the repository MIT license applies.
 
-The Cursor provider in `pi/` is adapted from `@netandreus/pi-cursor-provider`
-(MIT, Copyright (c) 2026 Andrey). That notice is preserved in `pi/README.md`.
+The Cursor provider in `pi/cursor-provider/` is adapted from `@netandreus/pi-cursor-provider`
+(MIT, Copyright (c) 2026 Andrey). That notice is preserved in `pi/cursor-provider/README.md`.

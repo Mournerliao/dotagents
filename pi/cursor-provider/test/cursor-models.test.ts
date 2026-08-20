@@ -7,7 +7,7 @@ import {
   isDefaultVariantName,
   parseAgentModelsOutput,
   parseModelId,
-} from "../src/cursor-provider/models.ts";
+} from "../src/models.ts";
 
 test("parseAgentModelsOutput skips headers and strips current/default flags", () => {
   const output = [

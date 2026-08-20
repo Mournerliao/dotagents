@@ -5,6 +5,6 @@
   "include": [],
   "references": [
     { "path": "./cli" },
-    { "path": "./pi" }
+    { "path": "./pi/cursor-provider" }
   ]
 }

@@ -8,7 +8,7 @@ import {
   permissionTitle,
   takeAllow,
   type PermissionParams,
-} from "../src/cursor-provider/consent.ts";
+} from "../src/consent.ts";
 
 const shellAsk: PermissionParams = {
   sessionId: "s",

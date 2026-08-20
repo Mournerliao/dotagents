@@ -18,9 +18,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Mournerliao/dotagents.git",
-    "directory": "pi"
+    "directory": "pi/cursor-provider"
   },
-  "homepage": "https://github.com/Mournerliao/dotagents/tree/main/pi",
+  "homepage": "https://github.com/Mournerliao/dotagents/tree/main/pi/cursor-provider",
   "bugs": {
     "url": "https://github.com/Mournerliao/dotagents/issues"
   },

@@ -13,7 +13,7 @@ export type SpawnFn = (
 ) => ChildProcess;
 
 const pkg = JSON.parse(
-  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../package.json"), "utf8"),
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../package.json"), "utf8"),
 ) as { name: string; version: string };
 
 export const PACKAGE_NAME = pkg.name;

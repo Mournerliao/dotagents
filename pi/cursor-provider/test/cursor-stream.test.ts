@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Api, AssistantMessageEvent, Context, Model } from "@earendil-works/pi-ai";
-import { streamCursorCli, toPiUsage } from "../src/cursor-provider/stream.ts";
-import type { PermissionParams } from "../src/cursor-provider/consent.ts";
+import { streamCursorCli, toPiUsage } from "../src/stream.ts";
+import type { PermissionParams } from "../src/consent.ts";
 import { scriptedAcp } from "./acp-harness.ts";
 
 function testModel(): Model<Api> {

@@ -5,7 +5,7 @@ Personal collection of AI and agent resources. Not a marketplace.
 | Path | What |
 |------|------|
 | [`cli/`](cli/) | [`@mournerliao/agent-skills`](https://www.npmjs.com/package/@mournerliao/agent-skills) — catalog and CLI for agent skills |
-| [`pi/`](pi/) | [`@mournerliao/pi-cursor-provider`](https://www.npmjs.com/package/@mournerliao/pi-cursor-provider) — Cursor provider for [pi](https://pi.dev) (`pi install`) |
+| [`pi/`](pi/) | Original [pi](https://pi.dev) extensions; each subdirectory is its own npm package. First: [`@mournerliao/pi-cursor-provider`](https://www.npmjs.com/package/@mournerliao/pi-cursor-provider) |
 | [`docs/`](docs/) | Guides, ADRs, and agent-facing domain docs |
 
 ## Skills
@@ -26,10 +26,10 @@ The global binary is `agent-skills`.
 ## Pi extensions
 
 ```bash
-pi install "$(pwd)/pi"
+pi install "$(pwd)/pi/cursor-provider"
 ```
 
-The first extension is a Cursor Agent CLI provider. See [pi/README.md](pi/README.md).
+See [pi/README.md](pi/README.md).
 
 ## Layout
 
